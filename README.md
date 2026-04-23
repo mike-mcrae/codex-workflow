@@ -21,7 +21,8 @@ The internal automation lives under `.workflow/`. That folder contains the agent
    - existing project or new project
    - dig deeper now or later
 3. If `gh auth login` has already been completed on the machine, the project is created as a private GitHub repo automatically.
-4. Codex starts inside the new project and continues from the starter prompt.
+4. `new_project` runs an automatic structure verification before the first commit.
+5. Codex starts inside the new project and continues from the starter prompt.
 
 For manual setup, see [SETUP.md](SETUP.md).
 

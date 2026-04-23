@@ -48,6 +48,45 @@ def command_output(cmd: list[str], cwd: Path | None = None) -> str:
     return result.stdout.strip()
 
 
+def ensure_canonical_structure(project_dir: Path) -> None:
+    cleanup_script = project_dir / ".workflow" / "scripts" / "cleanup_structure.py"
+    check = subprocess.run(
+        ["python3", str(cleanup_script), "check"],
+        cwd=str(project_dir),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if check.returncode == 0:
+        return
+
+    fix = subprocess.run(
+        ["python3", str(cleanup_script), "fix"],
+        cwd=str(project_dir),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if fix.returncode != 0:
+        raise SystemExit(
+            "The generated project failed the automatic structure repair step.\n"
+            f"{fix.stdout}{fix.stderr}"
+        )
+
+    verify = subprocess.run(
+        ["python3", str(cleanup_script), "check"],
+        cwd=str(project_dir),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if verify.returncode != 0:
+        raise SystemExit(
+            "The generated project still failed the structure check after repair.\n"
+            f"{verify.stdout}{verify.stderr}"
+        )
+
+
 def git_config_value(key: str, fallback: str) -> str:
     result = subprocess.run(
         ["git", "config", "--global", key],
@@ -414,6 +453,7 @@ def main() -> int:
 
     copy_template(destination)
     populate_project(destination, answers)
+    ensure_canonical_structure(destination)
     init_git_repo(destination)
     create_remote_repo(destination, answers)
 

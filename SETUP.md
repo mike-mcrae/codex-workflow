@@ -37,9 +37,10 @@ That command:
 1. creates `~/Documents/GitHub/<project_name>`
 2. copies this template into the new folder
 3. fills the minimum intake files
-4. initializes git
-5. creates a private GitHub repo and pushes the initial commit
-6. starts Codex in the new project
+4. runs the structure checker and auto-repairs any template drift
+5. initializes git
+6. creates a private GitHub repo and pushes the initial commit
+7. starts Codex in the new project
 
 ## Manual Path
 
