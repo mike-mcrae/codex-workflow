@@ -15,11 +15,12 @@ The design is adapted from the architecture of a mature multi-agent academic wor
 
 1. Clone the repo into a new project folder.
 2. Run [scripts/validate_setup.sh](scripts/validate_setup.sh).
-3. Run [scripts/bootstrap_project.py](scripts/bootstrap_project.py) to initialize the template for your project.
-4. Fill in [workspace/input/project-brief.md](workspace/input/project-brief.md), [workspace/input/source-notes.md](workspace/input/source-notes.md), and [memory/MEMORY.md](memory/MEMORY.md).
+3. On your machine, run `new_project` for the fast path.
+4. Answer only the four startup questions:
+   project name, 2 to 3 sentence description, existing/new, and dig deeper now/later.
 5. Start Codex through [scripts/start_codex_session.sh](scripts/start_codex_session.sh) or your wrapped `codex` command.
-6. Paste the prompt in [STARTER_PROMPT.md](STARTER_PROMPT.md).
-7. Use the orchestrator to run `planning -> writing -> review -> refinement`.
+6. Let Codex defer detailed intake until later if you chose that option.
+7. Use `/more_input` inside Codex whenever you want the deeper project questions asked and written back into the repo files.
 
 For the full setup path, see [SETUP.md](SETUP.md).
 
@@ -29,6 +30,7 @@ For the full setup path, see [SETUP.md](SETUP.md).
 - `prompts/`: stage-specific prompt templates used to generate Codex-ready work packets
 - `templates/`: reusable document templates for plans, drafts, reviews, and revision logs
 - `workflow/`: workflow rules and quality standards
+- `workflow/intake-protocol.md`: minimal startup intake and deferred `/more_input` protocol
 - `memory/`: layered memory for always-read facts, topic notes, and rolling session context
 - `decisions/`: dated decision records cited on demand
 - `transcripts/`: raw session archive scaffold for searchable long-tail retrieval
@@ -54,6 +56,23 @@ The prompts and workflow rules tell the agent:
 - read Layers 1 and 3 at session start
 - consult Layer 2 only when a settled question resurfaces
 - keep Layer 4 out of normal context and retrieve it only for exact prior commands, errors, or user wording
+
+## Intake Model
+
+The workflow now uses a two-stage intake:
+
+1. Minimal bootstrap intake:
+   project name, short description, existing/new, and dig-deeper now/later
+2. Deferred deep intake:
+   collected later via `/more_input` or when planning is genuinely blocked
+
+This keeps project startup fast while still preserving a place for detailed academic intake later.
+
+The intended default path is:
+
+- minimal intake at project creation
+- plan-first workflow with reasonable placeholders
+- deferred deep intake only when needed
 
 ## Workflow
 

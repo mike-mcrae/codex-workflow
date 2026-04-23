@@ -21,6 +21,7 @@ check_cmd script
 printf "\nChecking repository paths\n"
 for path in \
   config/project.toml \
+  workflow/intake-protocol.md \
   workflow/specification.md \
   workflow/memory-protocol.md \
   workspace/input/project-brief.md \

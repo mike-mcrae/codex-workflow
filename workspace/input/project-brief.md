@@ -2,6 +2,12 @@
 
 ## Working Title
 
+## Project Description
+
+## Project Status
+
+## Intake Depth
+
 ## Research Question
 
 ## Why This Matters

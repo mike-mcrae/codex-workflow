@@ -14,6 +14,13 @@ Optional machine-level convenience:
 - install `scripts/new_project.py` as a global `new_project` command on your machine
 - then create future projects directly from anywhere in the terminal
 
+If you use `new_project`, the intended default flow is minimal:
+
+1. project name
+2. 2 to 3 sentence project description
+3. existing project or new project
+4. dig deeper now or later
+
 ## 2. Validate Local Prerequisites
 
 ```bash
@@ -26,10 +33,11 @@ This checks for:
 - `git`
 - `codex`
 - `script` for continuous transcript capture
+- the workflow intake protocol files
 
 ## 3. Set Project-Specific Inputs
 
-Initialize the template first:
+Initialize the template first if you are doing setup manually:
 
 ```bash
 python3 scripts/bootstrap_project.py --title "Paper Title" --author "Your Name"
@@ -41,6 +49,8 @@ Then edit these files:
 - [workspace/input/project-brief.md](workspace/input/project-brief.md)
 - [workspace/input/source-notes.md](workspace/input/source-notes.md)
 - [memory/MEMORY.md](memory/MEMORY.md)
+
+If you use `new_project`, the minimal intake is already captured and deeper intake can be deferred until later with `/more_input`.
 
 Optional but recommended:
 
@@ -65,7 +75,8 @@ That prompt tells Codex to:
 
 - read the workflow files
 - honor the layered memory model
-- initialize the project from the repo template
+- honor the two-stage intake model
+- support `/more_input` as the deferred intake trigger
 - enter the plan-first workflow instead of jumping straight to drafting
 
 ## 6. Run The Workflow

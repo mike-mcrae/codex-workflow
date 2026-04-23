@@ -175,7 +175,7 @@ def append_session_log(project_dir: Path, project_title: str, project_name: str)
             "- Inputs used: interactive new_project setup answers.",
             f"- Outputs produced: {project_name} repository scaffold, configured project files, and initial git repository.",
             "- Decisions and rationale: Accepted the default Codex academic workflow structure as the base project scaffold.",
-            "- Open items: Codex should validate the project brief, source notes, and first plan.",
+            "- Open items: Codex should validate the project brief, decide whether deep intake is needed now, and create the first plan.",
             "- Next recommended action: Start Codex and begin the planning workflow.",
             "",
         ]
@@ -190,8 +190,6 @@ def populate_project(project_dir: Path, answers: dict[str, str]) -> None:
     config = set_toml_value(config, "title", answers["title"])
     config = set_toml_value(config, "discipline", answers["discipline"])
     config = set_toml_value(config, "paper_type", answers["paper_type"])
-    config = set_toml_value(config, "target_journal", answers["target_journal"])
-    config = set_toml_value(config, "voice", answers["voice"])
     write_text(config_path, config)
 
     latex_path = project_dir / "paper" / "main.tex"
@@ -203,6 +201,9 @@ def populate_project(project_dir: Path, answers: dict[str, str]) -> None:
     brief_path = project_dir / "workspace" / "input" / "project-brief.md"
     brief = read_text(brief_path)
     brief = set_section_value(brief, "Working Title", answers["title"])
+    brief = set_section_value(brief, "Project Description", answers["project_description"])
+    brief = set_section_value(brief, "Project Status", answers["project_status"])
+    brief = set_section_value(brief, "Intake Depth", answers["intake_depth"])
     brief = set_section_value(brief, "Research Question", answers["research_question"])
     brief = set_section_value(brief, "Why This Matters", answers["why_matters"])
     brief = set_section_value(brief, "Proposed Contribution", answers["contribution"])
@@ -225,10 +226,8 @@ def populate_project(project_dir: Path, answers: dict[str, str]) -> None:
     memory_path = project_dir / "memory" / "MEMORY.md"
     memory = read_text(memory_path).rstrip() + "\n\n"
     memory += f"- `[PROJECT:title] {answers['title']}`\n"
-    if answers["non_negotiables"]:
-        memory += f"- `[RULE:non_negotiables] {answers['non_negotiables']}`\n"
-    if answers["constraints"]:
-        memory += f"- `[RULE:constraints] {answers['constraints']}`\n"
+    memory += f"- `[PROJECT:status] {answers['project_status']}`\n"
+    memory += f"- `[PROJECT:intake_depth] {answers['intake_depth']}`\n"
     write_text(memory_path, memory)
 
     append_session_log(project_dir, answers["title"], answers["project_name"])
@@ -275,7 +274,14 @@ def build_codex_prompt(project_dir: Path, answers: dict[str, str]) -> str:
     starter = read_text(project_dir / "STARTER_PROMPT.md").strip()
     tail = "\n\nProject bootstrap notes:\n"
     tail += f"- Project folder: {answers['project_name']}\n"
+    tail += f"- Project description: {answers['project_description']}\n"
+    tail += f"- Project status: {answers['project_status']}\n"
+    tail += f"- Intake depth: {answers['intake_depth']}\n"
     tail += "- The project files have already been pre-populated from the interactive setup.\n"
+    if answers["intake_depth"] == "dig deeper now":
+        tail += "- Ask the deeper intake questions now before substantial planning, then write the answers into the repo files.\n"
+    else:
+        tail += "- Do not front-load deeper intake. Proceed with the available information and defer deeper questions until `/more_input` or a genuine planning block.\n"
     tail += "- Continue until you need direct user input, then ask the user the next necessary question.\n"
     return starter + tail
 
@@ -297,44 +303,48 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
     default_author = git_config_value("user.name", "Author Name")
     project_name = args.project_name or prompt("Project folder name", required=True)
     title = args.title or prompt("Paper or project title", default=project_name.replace("_", " "))
-    author = args.author or prompt("Author", default=default_author)
-    discipline = args.discipline or prompt("Discipline", default="Economics")
-    paper_type = args.paper_type or prompt("Paper type", default="Empirical paper")
-    target_journal = args.target_journal or prompt("Target journal or reader", default="General-interest field journal")
-    voice = args.voice or prompt("Writing voice", default="Precise, formal, evidence-led")
-    research_question = args.research_question or prompt("Research question", required=True)
-    why_matters = args.why_matters or prompt("Why this matters", required=True)
-    contribution = args.contribution or prompt("Proposed contribution", required=True)
-    constraints = args.constraints or prompt("Constraints", default="None yet")
-    non_negotiables = args.non_negotiables or prompt("Non-negotiables", default="Maintain rigorous academic standards")
-    key_papers = args.key_papers or prompt("Key papers", default="TBD")
-    data = args.data or prompt("Data", default="TBD")
-    identification = args.identification or prompt("Identification strategy notes", default="TBD")
-    empirical_design = args.empirical_design or prompt("Empirical design notes", default="TBD")
-    open_questions = args.open_questions or prompt("Open questions", default="TBD")
-    citations_to_verify = args.citations_to_verify or prompt("Citations to verify", default="TBD")
+    author = args.author or default_author
+    discipline = args.discipline or "Economics"
+    paper_type = args.paper_type or "Empirical paper"
+    project_description = args.project_description or prompt("Describe the project in 2-3 sentences", required=True)
+    project_status = args.project_status or prompt("Is this an existing project or a new project", default="existing project", required=True).lower()
+    if project_status not in {"existing project", "new project"}:
+        raise SystemExit("Project status must be `existing project` or `new project`.")
+    intake_depth = args.intake_depth or prompt("Would you like me to dig deeper now or later", default="later", required=True).lower()
+    if intake_depth not in {"now", "later"}:
+        raise SystemExit("Intake depth must be `now` or `later`.")
+    intake_depth_label = "dig deeper now" if intake_depth == "now" else "dig deeper later"
+    research_question = args.research_question or "TBD during planning"
+    why_matters = args.why_matters or project_description
+    contribution = args.contribution or "TBD during planning"
+    target_journal = args.target_journal or "TBD later"
+    voice = args.voice or "Precise, formal, evidence-led"
+    constraints = args.constraints or "TBD later"
+    non_negotiables = args.non_negotiables or "Maintain rigorous academic standards."
+    key_papers = args.key_papers or "TBD later"
+    data = args.data or "TBD later"
+    identification = args.identification or "TBD later"
+    empirical_design = args.empirical_design or "TBD later"
+    open_questions = args.open_questions or "TBD during planning"
+    citations_to_verify = args.citations_to_verify or "TBD later"
     github_owner_default = args.github_owner or gh_username() or "mike-mcrae"
     create_github_repo = args.create_github_repo
     if create_github_repo is None:
-        create_github_repo = prompt_yes_no("Create GitHub repository and push automatically", default=True)
+        create_github_repo = gh_is_authenticated()
     github_owner = args.github_owner or github_owner_default
     github_visibility = args.github_visibility or "private"
     github_description = args.github_description or f"Academic writing project: {title}"
-    if create_github_repo:
-        if not args.github_owner:
-            github_owner = prompt("GitHub owner or org", default=github_owner_default, required=True)
-        if not args.github_visibility:
-            github_visibility = prompt("GitHub visibility", default=github_visibility, required=True).lower()
-        if github_visibility not in {"private", "public"}:
-            raise SystemExit("GitHub visibility must be `private` or `public`.")
-        if not args.github_description:
-            github_description = prompt("GitHub repository description", default=github_description)
+    if github_visibility not in {"private", "public"}:
+        raise SystemExit("GitHub visibility must be `private` or `public`.")
     return {
         "project_name": slugify(project_name),
         "title": title,
         "author": author,
         "discipline": discipline,
         "paper_type": paper_type,
+        "project_description": project_description,
+        "project_status": project_status,
+        "intake_depth": intake_depth_label,
         "target_journal": target_journal,
         "voice": voice,
         "research_question": research_question,
@@ -362,6 +372,9 @@ def main() -> int:
     parser.add_argument("--author", help="Author name")
     parser.add_argument("--discipline", help="Discipline label")
     parser.add_argument("--paper-type", help="Paper type")
+    parser.add_argument("--project-description", help="Two to three sentence project description")
+    parser.add_argument("--project-status", choices=["existing project", "new project"], help="Whether this is an existing or new project")
+    parser.add_argument("--intake-depth", choices=["now", "later"], help="Whether to dig deeper now or later")
     parser.add_argument("--target-journal", help="Target journal or audience")
     parser.add_argument("--voice", help="Preferred writing voice")
     parser.add_argument("--research-question", help="Research question")
