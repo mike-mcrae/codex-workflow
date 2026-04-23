@@ -5,3 +5,5 @@ __pycache__/
 .DS_Store
 paper/build/
 workspace/runs/*/scratch/
+instructions.md
+memory_instructions.md
