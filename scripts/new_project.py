@@ -118,6 +118,17 @@ def gh_username() -> str:
         return ""
 
 
+def require_github_ready(owner_hint: str) -> str:
+    if not gh_available():
+        raise SystemExit("GitHub CLI (`gh`) is required for automatic repo creation. Install it or use `--no-create-github-repo`.")
+    if not gh_is_authenticated():
+        raise SystemExit("Automatic GitHub repo creation requires a one-time login. Run `gh auth login`, then run `new_project` again.")
+    owner = gh_username() or owner_hint
+    if not owner:
+        raise SystemExit("Could not determine GitHub username from `gh`. Set `--github-owner` explicitly.")
+    return owner
+
+
 def copy_template(destination: Path) -> None:
     ignore_names = shutil.ignore_patterns(
         ".git",
@@ -242,12 +253,6 @@ def init_git_repo(project_dir: Path) -> None:
 def create_remote_repo(project_dir: Path, answers: dict[str, str]) -> None:
     if not answers["create_github_repo"]:
         return
-    if not gh_available():
-        print("GitHub CLI (`gh`) is not installed. Skipping remote repository creation.", file=sys.stderr)
-        return
-    if not gh_is_authenticated():
-        print("GitHub CLI is not authenticated. Run `gh auth login` once, then `new_project` will create repos automatically.", file=sys.stderr)
-        return
 
     owner = answers["github_owner"]
     repo_name = answers["project_name"]
@@ -330,12 +335,14 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
     github_owner_default = args.github_owner or gh_username() or "mike-mcrae"
     create_github_repo = args.create_github_repo
     if create_github_repo is None:
-        create_github_repo = gh_is_authenticated()
+        create_github_repo = True
     github_owner = args.github_owner or github_owner_default
     github_visibility = args.github_visibility or "private"
     github_description = args.github_description or f"Academic writing project: {title}"
     if github_visibility not in {"private", "public"}:
         raise SystemExit("GitHub visibility must be `private` or `public`.")
+    if create_github_repo:
+        github_owner = require_github_ready(github_owner)
     return {
         "project_name": slugify(project_name),
         "title": title,

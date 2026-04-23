@@ -13,6 +13,7 @@ Optional machine-level convenience:
 
 - install `scripts/new_project.py` as a global `new_project` command on your machine
 - then create future projects directly from anywhere in the terminal
+- run `gh auth login` once if you want `new_project` to automatically create and push a private GitHub repository
 
 If you use `new_project`, the intended default flow is minimal:
 

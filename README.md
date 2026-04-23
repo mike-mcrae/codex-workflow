@@ -18,9 +18,10 @@ The design is adapted from the architecture of a mature multi-agent academic wor
 3. On your machine, run `new_project` for the fast path.
 4. Answer only the four startup questions:
    project name, 2 to 3 sentence description, existing/new, and dig deeper now/later.
-5. Start Codex through [scripts/start_codex_session.sh](scripts/start_codex_session.sh) or your wrapped `codex` command.
-6. Let Codex defer detailed intake until later if you chose that option.
-7. Use `/more_input` inside Codex whenever you want the deeper project questions asked and written back into the repo files.
+5. If `gh auth login` has already been run on the machine, `new_project` will also create a private GitHub repo, add `origin`, and push the first commit automatically.
+6. Start Codex through [scripts/start_codex_session.sh](scripts/start_codex_session.sh) or your wrapped `codex` command.
+7. Let Codex defer detailed intake until later if you chose that option.
+8. Use `/more_input` inside Codex whenever you want the deeper project questions asked and written back into the repo files.
 
 For the full setup path, see [SETUP.md](SETUP.md).
 
