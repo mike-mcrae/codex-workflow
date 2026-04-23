@@ -1,8 +1,13 @@
 # Setup
 
-This repo is a reusable template for academic projects with a researcher-facing layout and hidden Codex workflow support.
+This repo supports two setup styles:
 
-## Machine Setup
+1. public/manual setup for anyone who forks or clones the template
+2. optional personal machine automation such as `new_project` and a `codex` shell wrapper
+
+Your personal machine setup is separate from the public template. Other users should not assume they already have it.
+
+## Public Manual Setup
 
 Required tools:
 
@@ -10,7 +15,10 @@ Required tools:
 - `git`
 - `codex`
 - `script`
-- `gh` for automatic private GitHub repo creation
+
+Optional:
+
+- `gh` if the user wants GitHub CLI automation
 
 Validate the environment:
 
@@ -18,40 +26,14 @@ Validate the environment:
 ./.workflow/scripts/validate_setup.sh
 ```
 
-If you want `new_project` to create and push private GitHub repositories automatically, run once:
+Clone the repo:
 
 ```bash
-gh auth login
-```
-
-## Fast Path
-
-Use the machine-level helper:
-
-```bash
-new_project
-```
-
-That command:
-
-1. creates `~/Documents/GitHub/<project_name>`
-2. copies this template into the new folder
-3. fills the minimum intake files
-4. runs the structure checker and auto-repairs any template drift
-5. initializes git
-6. creates a private GitHub repo and pushes the initial commit
-7. starts Codex in the new project
-
-## Manual Path
-
-Clone the template:
-
-```bash
-git clone git@github.com:mike-mcrae/codex-workflow.git my-project
+git clone git@github.com:<your-user>/codex-workflow.git my-project
 cd my-project
 ```
 
-Bootstrap the files:
+Bootstrap the project files:
 
 ```bash
 python3 .workflow/scripts/bootstrap_project.py --title "Paper Title" --author "Your Name"
@@ -64,29 +46,57 @@ Then edit:
 - `notes/source-notes.md`
 - `.workflow/memory/MEMORY.md`
 
-## Launching Codex
-
-Start Codex through the launcher so transcripts are captured continuously:
+Start Codex through the launcher:
 
 ```bash
 ./.workflow/scripts/start_codex_session.sh
 ```
 
-If your shell wrapper is installed, plain `codex` already routes through that launcher.
+Use [STARTER_PROMPT.md](STARTER_PROMPT.md) for the first session.
 
-## Starter Prompt
+## Optional Personal Machine Setup
 
-Use [STARTER_PROMPT.md](STARTER_PROMPT.md) when starting manual sessions. It tells Codex to read:
+If someone wants the same convenience layer you use locally, they can add it themselves. This is optional, not part of the base repo contract.
 
-- `.workflow/protocols/specification.md`
-- `.workflow/protocols/memory-protocol.md`
-- `.workflow/protocols/intake-protocol.md`
-- `.workflow/protocols/structure-protocol.md`
-- `.workflow/config/project.toml`
-- `notes/project-brief.md`
-- `notes/source-notes.md`
-- `.workflow/memory/MEMORY.md`
-- `.workflow/memory/session-log.md`
+Typical additions are:
+
+- install `new_project` as a global command
+- wrap `codex` so it always launches through `.workflow/scripts/start_codex_session.sh`
+- run `gh auth login` once so new projects can be created as private GitHub repos automatically
+
+## `new_project`
+
+`new_project` is a convenience wrapper around this template.
+
+It:
+
+1. creates a new project directory
+2. copies the template
+3. collects the four bootstrap answers
+4. verifies and repairs structure before the first commit
+5. initializes git
+6. optionally creates and pushes a private GitHub repo
+7. launches Codex
+
+If a user wants automatic private repo creation, they need:
+
+```bash
+gh auth login
+```
+
+## Automatic Structure Checks
+
+Structure checks are automatic if the user follows the normal path:
+
+- `new_project` runs a structure check before the first commit
+- `./.workflow/scripts/start_codex_session.sh` runs a structure check before each Codex session
+
+Manual commands are still available:
+
+```bash
+python3 .workflow/scripts/cleanup_structure.py check
+python3 .workflow/scripts/cleanup_structure.py fix
+```
 
 ## Workflow Commands
 
@@ -105,11 +115,4 @@ Code audit:
 python3 .workflow/scripts/code_audit.py prepare --file scripts/python/analysis.py
 python3 .workflow/scripts/code_audit.py prepare --file scripts/stata/analysis.do
 python3 .workflow/scripts/code_audit.py prepare --file scripts/r/analysis.R
-```
-
-Structure check and repair:
-
-```bash
-python3 .workflow/scripts/cleanup_structure.py check
-python3 .workflow/scripts/cleanup_structure.py fix
 ```

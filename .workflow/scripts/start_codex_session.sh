@@ -3,9 +3,16 @@ set -eu
 
 PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 LIVE_DIR="$PROJECT_ROOT/.workflow/transcripts/live"
+STRUCTURE_CHECKER="$PROJECT_ROOT/.workflow/scripts/cleanup_structure.py"
 mkdir -p "$LIVE_DIR"
 
 python3 "$PROJECT_ROOT/.workflow/scripts/session_end_export.py" recover-live >/dev/null 2>&1 || true
+
+if ! python3 "$STRUCTURE_CHECKER" check >/dev/null 2>&1; then
+  printf "Structure drift detected. Applying automatic repair before starting Codex.\n" >&2
+  python3 "$STRUCTURE_CHECKER" fix >/dev/null
+  python3 "$STRUCTURE_CHECKER" check >/dev/null
+fi
 
 SESSION_START="$(date '+%Y-%m-%dT%H:%M:%S')"
 SESSION_ID="${CODEX_SESSION_ID:-$(date '+%Y%m%d-%H%M%S')}"
