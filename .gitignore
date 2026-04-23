@@ -3,7 +3,7 @@ __pycache__/
 *.pyo
 *.swp
 .DS_Store
-paper/build/
-workspace/runs/*/scratch/
+manuscript/build/
+.workflow/state/runs/*/scratch/
 instructions.md
 memory_instructions.md
