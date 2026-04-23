@@ -26,6 +26,8 @@ for path in \
   workspace/input/project-brief.md \
   workspace/input/source-notes.md \
   memory/MEMORY.md \
+  scripts/bootstrap_project.py \
+  scripts/code_audit.py \
   scripts/orchestrate.py \
   scripts/start_codex_session.sh
 do

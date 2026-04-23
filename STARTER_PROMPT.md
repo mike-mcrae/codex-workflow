@@ -18,6 +18,7 @@ Please do the following in order:
 5. Use the planner logic in this repo to create the first approved plan for the project.
 6. Keep the workflow modular and file-backed. Do not invent a parallel structure outside the repository conventions.
 7. When resuming later sessions, use the existing memory and run-state files instead of starting over.
+8. If I ask for a code audit, use the language-specific audit flow for Python, Stata, or R rather than treating code review as generic prose review.
 
 Once you understand the repository, tell me the immediate next step and begin the workflow.
 ```

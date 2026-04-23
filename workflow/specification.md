@@ -27,6 +27,9 @@ planning -> writing -> review -> refinement -> review -> ... -> complete
 - `methods-referee`: stress-tests identification, econometrics, and inferential claims
 - `adversarial-reviewer`: searches for fatal weaknesses, overclaiming, and referee-style objections
 - `final-editor`: optional final pass for copy, coherence, and LaTeX handoff
+- `python-reviewer`: audits Python research code
+- `stata-reviewer`: audits Stata do-files and empirical workflow logic
+- `r-reviewer`: audits R research code
 
 ## Persistent Memory
 
@@ -63,6 +66,16 @@ The orchestrator synthesizes those reports into a review summary and then:
 - sends the run to `refinement` even when the first review is favorable, because the workflow requires at least one revision round
 - sends the run to `complete` only after a post-refinement review cycle clears all major issues and receives unanimous approval
 - sends the run to `blocked` if the maximum refinement count is exhausted without clearance
+
+## Code Audit Logic
+
+The repository also supports standalone code audits for:
+
+- Python (`.py`)
+- Stata (`.do`)
+- R (`.R`)
+
+Use `scripts/code_audit.py` to prepare a language-specific audit packet and structured report stub in `workspace/audits/`.
 
 ## Output Conventions
 

@@ -24,7 +24,13 @@ This checks for:
 
 ## 3. Set Project-Specific Inputs
 
-Edit these files first:
+Initialize the template first:
+
+```bash
+python3 scripts/bootstrap_project.py --title "Paper Title" --author "Your Name"
+```
+
+Then edit these files:
 
 - [config/project.toml](config/project.toml)
 - [workspace/input/project-brief.md](workspace/input/project-brief.md)
@@ -98,3 +104,18 @@ Project-to-project variation should mostly live in:
 - `paper/*`
 
 The workflow engine, prompts, and memory rules should remain largely unchanged unless you are intentionally evolving the template itself.
+
+## 8. Audit Code In Python, Stata, Or R
+
+Generate a language-aware code audit packet:
+
+```bash
+python3 scripts/code_audit.py prepare --file path/to/script.py
+python3 scripts/code_audit.py prepare --file path/to/script.do
+python3 scripts/code_audit.py prepare --file path/to/script.R
+```
+
+This creates:
+
+- a packet telling Codex how to review the file
+- a structured report stub under `workspace/audits/`

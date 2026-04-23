@@ -15,10 +15,11 @@ The design is adapted from the architecture of a mature multi-agent academic wor
 
 1. Clone the repo into a new project folder.
 2. Run [scripts/validate_setup.sh](scripts/validate_setup.sh).
-3. Fill in [config/project.toml](config/project.toml), [workspace/input/project-brief.md](workspace/input/project-brief.md), [workspace/input/source-notes.md](workspace/input/source-notes.md), and [memory/MEMORY.md](memory/MEMORY.md).
-4. Start Codex through [scripts/start_codex_session.sh](scripts/start_codex_session.sh) or your wrapped `codex` command.
-5. Paste the prompt in [STARTER_PROMPT.md](STARTER_PROMPT.md).
-6. Use the orchestrator to run `planning -> writing -> review -> refinement`.
+3. Run [scripts/bootstrap_project.py](scripts/bootstrap_project.py) to initialize the template for your project.
+4. Fill in [workspace/input/project-brief.md](workspace/input/project-brief.md), [workspace/input/source-notes.md](workspace/input/source-notes.md), and [memory/MEMORY.md](memory/MEMORY.md).
+5. Start Codex through [scripts/start_codex_session.sh](scripts/start_codex_session.sh) or your wrapped `codex` command.
+6. Paste the prompt in [STARTER_PROMPT.md](STARTER_PROMPT.md).
+7. Use the orchestrator to run `planning -> writing -> review -> refinement`.
 
 For the full setup path, see [SETUP.md](SETUP.md).
 
@@ -33,7 +34,7 @@ For the full setup path, see [SETUP.md](SETUP.md).
 - `transcripts/`: raw session archive scaffold for searchable long-tail retrieval
 - `workspace/`: project brief, source notes, and per-run state
 - `paper/`: LaTeX-ready manuscript scaffold for economics-style papers
-- `scripts/`: setup validation, orchestrator, memory helpers, and transcript capture tools
+- `scripts/`: setup validation, project bootstrap, orchestrator, code audit helpers, memory helpers, and transcript capture tools
 
 ## Memory Layers
 
@@ -72,6 +73,7 @@ Rules:
 
 ```bash
 ./scripts/validate_setup.sh
+python3 scripts/bootstrap_project.py --title "Trade Shocks and Worker Mobility" --author "Your Name"
 ./scripts/start_codex_session.sh
 python3 scripts/orchestrate.py init-run --title "Paper Title"
 python3 scripts/orchestrate.py status
@@ -81,8 +83,9 @@ python3 scripts/orchestrate.py prepare-stage --run <run-id>
 python3 scripts/orchestrate.py status --run <run-id>
 python3 scripts/memory_tools.py new-decision --topic "chosen identification strategy"
 python3 scripts/memory_tools.py log-session --title "Draft review" --summary "Closed first review cycle" --inputs "draft_cycle1.md, review_cycle1_summary.md" --outputs "revision_cycle1.md" --decisions "Promoted revision policy to decisions/..." --open-items "Need second review cycle" --next-action "Prepare review packets"
-./scripts/start_codex_session.sh
-python3 scripts/session_end_export.py export --transcript /path/to/session.md --title "Codex session"
+python3 scripts/code_audit.py prepare --file analysis/model.py
+python3 scripts/code_audit.py prepare --file analysis/specification.do
+python3 scripts/code_audit.py prepare --file analysis/cleaning.R
 python3 scripts/session_end_export.py search --query "how did we fix bibtex"
 ```
 
@@ -96,6 +99,16 @@ python3 scripts/orchestrate.py submit --artifact workspace/runs/<run-id>/artifac
 ```
 
 Repeat `prepare-stage` and `submit` until the run is complete.
+
+## Code Audits
+
+The repository includes language-specific code audit packets for:
+
+- Python
+- Stata
+- R
+
+Use `python3 scripts/code_audit.py prepare --file <path>` to generate a packet and report stub under `workspace/audits/`.
 
 ## Repository Layout
 
@@ -114,6 +127,7 @@ Repeat `prepare-stage` and `submit` until the run is complete.
 ├── transcripts/
 ├── workflow/
 └── workspace/
+    ├── audits/
     ├── input/
     └── runs/
 ```

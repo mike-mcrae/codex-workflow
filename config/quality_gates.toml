@@ -17,3 +17,21 @@ require_identification_section = true
 require_literature_positioning = true
 require_limitations_section = true
 require_table_figure_references = true
+
+[python_checks]
+forbid_hardcoded_paths = true
+require_reproducible_randomness = true
+flag_silent_dataframe_mutations = true
+flag_unchecked_merge_or_join_assumptions = true
+
+[stata_checks]
+require_version_header = true
+forbid_unguarded_globals = true
+flag_sort_order_dependence = true
+flag_sample_drift_across_outputs = true
+
+[r_checks]
+forbid_hardcoded_paths = true
+require_reproducible_randomness = true
+flag_silent_factor_or_join_issues = true
+flag_sample_drift_across_outputs = true
