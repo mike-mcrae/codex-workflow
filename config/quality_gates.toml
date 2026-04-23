@@ -1,0 +1,19 @@
+[thresholds]
+minimum_plan_status = "approved"
+minimum_reviewer_count = 3
+require_zero_open_major_issues = true
+require_unanimous_approval = true
+
+[dimensions]
+argument = 20
+identification = 20
+methods = 20
+evidence = 15
+writing = 15
+citations = 10
+
+[economics_checks]
+require_identification_section = true
+require_literature_positioning = true
+require_limitations_section = true
+require_table_figure_references = true

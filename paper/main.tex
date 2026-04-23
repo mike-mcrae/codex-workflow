@@ -1,0 +1,29 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath, amssymb}
+\usepackage[numbers]{natbib}
+\usepackage{hyperref}
+
+\title{Working Paper Title}
+\author{Author Name}
+\date{\today}
+
+\begin{document}
+\maketitle
+\onehalfspacing
+
+\input{sections/abstract}
+\input{sections/introduction}
+\input{sections/literature}
+\input{sections/methods}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{bibliography/references}
+
+\end{document}
