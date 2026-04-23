@@ -9,6 +9,11 @@ git clone git@github.com:mike-mcrae/codex-workflow.git my-paper
 cd my-paper
 ```
 
+Optional machine-level convenience:
+
+- install `scripts/new_project.py` as a global `new_project` command on your machine
+- then create future projects directly from anywhere in the terminal
+
 ## 2. Validate Local Prerequisites
 
 ```bash
