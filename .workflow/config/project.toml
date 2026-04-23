@@ -9,6 +9,7 @@ citation_style = "BibTeX"
 [workflow]
 max_refinement_rounds = 3
 required_reviewers = ["reviewer", "methods-referee", "adversarial-reviewer"]
+dangerously_bypass_approvals_and_sandbox = false
 latex_root = "manuscript/main.tex"
 paper_sections = [
   "abstract",

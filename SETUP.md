@@ -74,15 +74,18 @@ It:
 2. copies the template
 3. collects the four bootstrap answers
 4. verifies and repairs structure before the first commit
-5. initializes git
-6. optionally creates and pushes a private GitHub repo
-7. launches Codex
+5. asks whether this project should launch Codex with `--dangerously-bypass-approvals-and-sandbox`
+6. initializes git
+7. optionally creates and pushes a private GitHub repo
+8. launches Codex
 
 If a user wants automatic private repo creation, they need:
 
 ```bash
 gh auth login
 ```
+
+If they want unrestricted Codex sessions for that project, they can answer `y` when `new_project` asks whether to bypass approvals and sandbox. That preference is stored in `.workflow/config/project.toml` and reused by the session launcher.
 
 ## Automatic Structure Checks
 

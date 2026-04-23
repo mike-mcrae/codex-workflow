@@ -105,6 +105,8 @@ Optional:
 
 Most users do not need any machine-specific shell customization to use the template.
 
+At project creation, this template can also store whether Codex should launch in unrestricted mode with `--dangerously-bypass-approvals-and-sandbox`. That is a per-project choice, not a public requirement.
+
 ## Optional Personal Automation
 
 This repo also supports extra convenience layers, but they are optional:

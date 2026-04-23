@@ -204,6 +204,15 @@ def set_toml_value(text: str, key: str, value: str) -> str:
     )
 
 
+def set_toml_bool(text: str, key: str, value: bool) -> str:
+    return re.sub(
+        rf"^{re.escape(key)} = (true|false)$",
+        f"{key} = {'true' if value else 'false'}",
+        text,
+        flags=re.MULTILINE,
+    )
+
+
 def set_section_value(text: str, heading: str, value: str) -> str:
     pattern = rf"(## {re.escape(heading)}\n)(.*?)(\n## |\Z)"
     match = re.search(pattern, text, flags=re.DOTALL)
@@ -240,6 +249,11 @@ def populate_project(project_dir: Path, answers: dict[str, str]) -> None:
     config = set_toml_value(config, "title", answers["title"])
     config = set_toml_value(config, "discipline", answers["discipline"])
     config = set_toml_value(config, "paper_type", answers["paper_type"])
+    config = set_toml_bool(
+        config,
+        "dangerously_bypass_approvals_and_sandbox",
+        answers["dangerously_bypass_approvals_and_sandbox"],
+    )
     write_text(config_path, config)
 
     latex_path = project_dir / "manuscript" / "main.tex"
@@ -358,6 +372,12 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
     if intake_depth not in {"now", "later"}:
         raise SystemExit("Intake depth must be `now` or `later`.")
     intake_depth_label = "dig deeper now" if intake_depth == "now" else "dig deeper later"
+    bypass_sandbox = args.dangerously_bypass_approvals_and_sandbox
+    if bypass_sandbox is None:
+        bypass_sandbox = prompt_yes_no(
+            "Allow Codex to bypass approvals and sandbox for this project",
+            default=False,
+        )
     research_question = args.research_question or "TBD during planning"
     why_matters = args.why_matters or project_description
     contribution = args.contribution or "TBD during planning"
@@ -391,6 +411,7 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
         "project_description": project_description,
         "project_status": project_status,
         "intake_depth": intake_depth_label,
+        "dangerously_bypass_approvals_and_sandbox": bypass_sandbox,
         "target_journal": target_journal,
         "voice": voice,
         "research_question": research_question,
@@ -421,6 +442,18 @@ def main() -> int:
     parser.add_argument("--project-description", help="Two to three sentence project description")
     parser.add_argument("--project-status", choices=["existing project", "new project"], help="Whether this is an existing or new project")
     parser.add_argument("--intake-depth", choices=["now", "later"], help="Whether to dig deeper now or later")
+    parser.add_argument(
+        "--dangerously-bypass-approvals-and-sandbox",
+        dest="dangerously_bypass_approvals_and_sandbox",
+        action="store_true",
+        help="Launch Codex for this project with --dangerously-bypass-approvals-and-sandbox",
+    )
+    parser.add_argument(
+        "--no-dangerously-bypass-approvals-and-sandbox",
+        dest="dangerously_bypass_approvals_and_sandbox",
+        action="store_false",
+        help="Do not launch Codex for this project with --dangerously-bypass-approvals-and-sandbox",
+    )
     parser.add_argument("--target-journal", help="Target journal or audience")
     parser.add_argument("--voice", help="Preferred writing voice")
     parser.add_argument("--research-question", help="Research question")
@@ -441,7 +474,7 @@ def main() -> int:
     parser.add_argument("--github-visibility", choices=["private", "public"], help="GitHub repository visibility")
     parser.add_argument("--github-description", help="GitHub repository description")
     parser.add_argument("--no-launch", action="store_true", help="Create the project but do not launch Codex")
-    parser.set_defaults(create_github_repo=None)
+    parser.set_defaults(create_github_repo=None, dangerously_bypass_approvals_and_sandbox=None)
     args = parser.parse_args()
 
     answers = collect_answers(args)
