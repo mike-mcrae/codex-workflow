@@ -1,119 +1,119 @@
 # Codex Academic Workflow
 
-This repo is a reusable academic project template. It keeps the researcher-facing project structure simple and pushes the agent machinery into a hidden `.workflow/` directory.
+A ready-to-fork template for AI-assisted academic projects. It gives you a clean research project structure at the top level and keeps the agent machinery hidden under `.workflow/`.
 
-The researcher-facing directories are:
+This template is for people who want Codex to help plan, draft, review, refine, and audit academic work without turning the repository itself into a mess.
 
-- `data/`
-- `scripts/`
-- `output/`
-- `manuscript/`
-- `notes/`
+## Quick Start
 
-The internal automation lives under `.workflow/`:
-
-- agent instructions
-- prompts and templates
-- layered memory
-- transcript archive
-- workflow scripts
-- run state
-
-## Public Use
-
-If you fork or clone this repo, you do not need the author’s personal shell setup.
-
-The standard path is:
-
-1. Fork or clone the repository.
-2. Run `./.workflow/scripts/validate_setup.sh`.
-3. Bootstrap the project files.
-4. Start Codex through the launcher.
-5. Paste the starter prompt from [STARTER_PROMPT.md](STARTER_PROMPT.md).
-
-Example:
+1. Fork or clone this repo.
+2. Run the setup check:
 
 ```bash
-git clone git@github.com:<your-user>/codex-workflow.git my-project
-cd my-project
 ./.workflow/scripts/validate_setup.sh
+```
+
+3. Bootstrap the project:
+
+```bash
 python3 .workflow/scripts/bootstrap_project.py --title "Paper Title" --author "Your Name"
+```
+
+4. Start Codex through the launcher:
+
+```bash
 ./.workflow/scripts/start_codex_session.sh
 ```
 
-## Optional Personal Automation
+5. Paste the starter prompt from [STARTER_PROMPT.md](STARTER_PROMPT.md).
 
-This repo also supports machine-level conveniences, but those are optional:
+For full setup details, see [SETUP.md](SETUP.md).
 
-- a global `new_project` command
-- a shell wrapper that routes `codex` through the session launcher
-- automatic GitHub repo creation through `gh`
+## Starter Prompt
 
-Those are personal machine integrations. They are not required for someone else forking this repo.
+The intended first-session prompt is simple:
 
-## Researcher Layout
+> I am starting work on [PROJECT NAME] in this repo. [Describe your project in 2–3 sentences.] Please read the configuration files, adapt them for my project, enter the workflow, and start with planning.
+
+The repo’s full starter prompt is in [STARTER_PROMPT.md](STARTER_PROMPT.md).
+
+## What Codex Will Do
+
+After you start a project, Codex is expected to:
+
+- read the project configuration, notes, and workflow rules
+- adapt the repo to your project
+- start with a plan rather than drafting immediately
+- keep work file-backed rather than hiding state in chat
+- write research content into the researcher-facing directories
+- run review and refinement loops before treating work as complete
+- support code audits for Python, Stata, and R
+
+In practice, the workflow is:
+
+`plan -> draft -> review -> refine -> review`
+
+The goal is that you ask for work in normal language and the repo gives Codex enough structure to handle it consistently.
+
+## Project Structure
+
+The top level is designed for the researcher, not the agent:
 
 ```text
 .
 ├── data/
-│   ├── derived/
-│   ├── external/
-│   └── raw/
-├── manuscript/
-│   ├── bibliography/
-│   ├── figures/
-│   ├── sections/
-│   └── main.tex
-├── notes/
-│   ├── project-brief.md
-│   └── source-notes.md
-├── output/
-│   ├── figures/
-│   ├── logs/
-│   └── tables/
 ├── scripts/
-│   ├── python/
-│   ├── r/
-│   ├── shell/
-│   └── stata/
+├── output/
+├── manuscript/
+├── notes/
 └── .workflow/
-    ├── agents/
-    ├── config/
-    ├── decisions/
-    ├── memory/
-    ├── prompts/
-    ├── protocols/
-    ├── scripts/
-    ├── skills/
-    ├── state/
-    ├── templates/
-    └── transcripts/
 ```
 
-## Automatic Structure Hygiene
+What belongs where:
 
-The repo now checks structure in three places:
+- `data/`: raw, derived, and external data
+- `scripts/`: research code, organized by language
+- `output/`: figures, tables, and logs
+- `manuscript/`: the paper itself
+- `notes/`: the project brief and source notes
+- `.workflow/`: internal prompts, memory, state, transcript capture, and workflow scripts
 
-1. `new_project` verifies and repairs structure before the first commit.
-2. `./.workflow/scripts/start_codex_session.sh` checks and repairs structure before every Codex session.
-3. Codex can still be told to run `/cleanup_structure` explicitly if you want a manual cleanup pass.
+You should mostly work in the first five. `.workflow/` is there so the automation has somewhere to live without cluttering the research project surface.
 
-That means the user usually does not need to trigger structure cleanup manually, as long as they start Codex through the launcher or a wrapper that calls it.
+## Automatic Structure Checks
 
-## Internal Workflow
+This repo now checks project structure automatically:
 
-The state machine is:
+- `new_project` checks and repairs structure before the first commit
+- `./.workflow/scripts/start_codex_session.sh` checks and repairs structure before each Codex session
+- Codex can also run `/cleanup_structure` if you want an explicit cleanup pass
 
-`planning -> writing -> review -> refinement -> review -> ... -> complete`
+So if a project starts to drift away from the standard academic layout, the normal entrypoints will pull it back into shape.
 
-The repo keeps four memory layers:
+## What A New User Needs
 
-1. `.workflow/memory/MEMORY.md` and `.workflow/memory/topics/*`
-2. `.workflow/decisions/*`
-3. `.workflow/memory/session-log.md`
-4. `.workflow/transcripts/*`
+For a public fork or clone, the important requirements are:
 
-Codex reads the rules from `.workflow/protocols/`.
+- `python3`
+- `git`
+- `codex`
+- `script`
+
+Optional:
+
+- `gh` if you want GitHub CLI automation
+
+Most users do not need any machine-specific shell customization to use the template.
+
+## Optional Personal Automation
+
+This repo also supports extra convenience layers, but they are optional:
+
+- a global `new_project` command
+- a shell wrapper that routes `codex` through the launcher
+- automatic private GitHub repo creation through `gh`
+
+Those are personal machine integrations. They are not required for someone forking this repo.
 
 ## Common Commands
 
@@ -128,20 +128,22 @@ python3 .workflow/scripts/cleanup_structure.py check
 python3 .workflow/scripts/cleanup_structure.py fix
 ```
 
-## Structure Hygiene Tools
+## Included Workflows
 
-The cleanup layer includes:
+This template includes:
 
-- [structure-protocol.md](/Users/mikemcrae/Documents/GitHub/codex%20workflow/.workflow/protocols/structure-protocol.md)
-- [cleanup_structure.py](/Users/mikemcrae/Documents/GitHub/codex%20workflow/.workflow/scripts/cleanup_structure.py)
-- [SKILL.md](/Users/mikemcrae/Documents/GitHub/codex%20workflow/.workflow/skills/academic-cleanup/SKILL.md)
+- plan-first writing workflow
+- multi-stage review and refinement
+- layered project memory
+- transcript capture and retrieval
+- automatic structure cleanup
+- code audit flows for Python, Stata, and R
 
-## Code Audits
+## More Detail
 
-The workflow includes language-specific audit packets for:
+Use these files when you want the deeper mechanics:
 
-- Python
-- Stata
-- R
-
-Run `python3 .workflow/scripts/code_audit.py prepare --file <path>` to generate a review packet and report stub under `.workflow/state/audits/`.
+- [SETUP.md](SETUP.md)
+- [STARTER_PROMPT.md](STARTER_PROMPT.md)
+- [.workflow/protocols/specification.md](.workflow/protocols/specification.md)
+- [.workflow/protocols/structure-protocol.md](.workflow/protocols/structure-protocol.md)
