@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from pathlib import Path
 TEMPLATE_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASE_DIR = Path.home() / "Documents" / "GitHub"
 REAL_CODEX = "/opt/homebrew/bin/codex"
+GH_BIN = shutil.which("gh") or "/opt/homebrew/bin/gh"
 
 
 def read_text(path: Path) -> str:
@@ -33,6 +35,17 @@ def slugify(value: str) -> str:
 
 def shell(cmd: list[str], cwd: Path | None = None) -> None:
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+
+
+def command_output(cmd: list[str], cwd: Path | None = None) -> str:
+    result = subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return result.stdout.strip()
 
 
 def git_config_value(key: str, fallback: str) -> str:
@@ -56,6 +69,53 @@ def prompt(label: str, default: str = "", required: bool = False) -> str:
             return default
         if not required:
             return ""
+
+
+def prompt_yes_no(label: str, default: bool = True) -> bool:
+    suffix = " [Y/n]" if default else " [y/N]"
+    while True:
+        value = input(f"{label}{suffix}: ").strip().lower()
+        if not value:
+            return default
+        if value in {"y", "yes"}:
+            return True
+        if value in {"n", "no"}:
+            return False
+
+
+def gh_available() -> bool:
+    return bool(shutil.which("gh") or Path(GH_BIN).exists())
+
+
+def gh_is_authenticated() -> bool:
+    if not gh_available():
+        return False
+    result = subprocess.run(
+        [GH_BIN, "auth", "status"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def gh_login() -> str:
+    if not gh_is_authenticated():
+        return ""
+    try:
+        return command_output([GH_BIN, "api", "user"]).strip()
+    except Exception:
+        return ""
+
+
+def gh_username() -> str:
+    if not gh_is_authenticated():
+        return ""
+    try:
+        payload = json.loads(command_output([GH_BIN, "api", "user"]))
+        return payload.get("login", "")
+    except Exception:
+        return ""
 
 
 def copy_template(destination: Path) -> None:
@@ -180,6 +240,37 @@ def init_git_repo(project_dir: Path) -> None:
     shell(["git", "commit", "-m", "Bootstrap project from codex-workflow template"], cwd=project_dir)
 
 
+def create_remote_repo(project_dir: Path, answers: dict[str, str]) -> None:
+    if not answers["create_github_repo"]:
+        return
+    if not gh_available():
+        print("GitHub CLI (`gh`) is not installed. Skipping remote repository creation.", file=sys.stderr)
+        return
+    if not gh_is_authenticated():
+        print("GitHub CLI is not authenticated. Run `gh auth login` once, then `new_project` will create repos automatically.", file=sys.stderr)
+        return
+
+    owner = answers["github_owner"]
+    repo_name = answers["project_name"]
+    visibility = answers["github_visibility"]
+    description = answers["github_description"]
+    cmd = [
+        GH_BIN,
+        "repo",
+        "create",
+        f"{owner}/{repo_name}",
+        f"--{visibility}",
+        "--source",
+        ".",
+        "--remote",
+        "origin",
+        "--push",
+    ]
+    if description:
+        cmd.extend(["--description", description])
+    shell(cmd, cwd=project_dir)
+
+
 def build_codex_prompt(project_dir: Path, answers: dict[str, str]) -> str:
     starter = read_text(project_dir / "STARTER_PROMPT.md").strip()
     tail = "\n\nProject bootstrap notes:\n"
@@ -222,6 +313,22 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
     empirical_design = args.empirical_design or prompt("Empirical design notes", default="TBD")
     open_questions = args.open_questions or prompt("Open questions", default="TBD")
     citations_to_verify = args.citations_to_verify or prompt("Citations to verify", default="TBD")
+    github_owner_default = args.github_owner or gh_username() or "mike-mcrae"
+    create_github_repo = args.create_github_repo
+    if create_github_repo is None:
+        create_github_repo = prompt_yes_no("Create GitHub repository and push automatically", default=True)
+    github_owner = args.github_owner or github_owner_default
+    github_visibility = args.github_visibility or "private"
+    github_description = args.github_description or f"Academic writing project: {title}"
+    if create_github_repo:
+        if not args.github_owner:
+            github_owner = prompt("GitHub owner or org", default=github_owner_default, required=True)
+        if not args.github_visibility:
+            github_visibility = prompt("GitHub visibility", default=github_visibility, required=True).lower()
+        if github_visibility not in {"private", "public"}:
+            raise SystemExit("GitHub visibility must be `private` or `public`.")
+        if not args.github_description:
+            github_description = prompt("GitHub repository description", default=github_description)
     return {
         "project_name": slugify(project_name),
         "title": title,
@@ -241,6 +348,10 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
         "empirical_design": empirical_design,
         "open_questions": open_questions,
         "citations_to_verify": citations_to_verify,
+        "create_github_repo": create_github_repo,
+        "github_owner": github_owner,
+        "github_visibility": github_visibility,
+        "github_description": github_description,
     }
 
 
@@ -265,7 +376,13 @@ def main() -> int:
     parser.add_argument("--open-questions", help="Open questions")
     parser.add_argument("--citations-to-verify", help="Citations to verify")
     parser.add_argument("--base-dir", default=str(DEFAULT_BASE_DIR), help="Base directory for new projects")
+    parser.add_argument("--create-github-repo", dest="create_github_repo", action="store_true", help="Create and push a GitHub repository automatically")
+    parser.add_argument("--no-create-github-repo", dest="create_github_repo", action="store_false", help="Do not create a GitHub repository automatically")
+    parser.add_argument("--github-owner", help="GitHub username or organization")
+    parser.add_argument("--github-visibility", choices=["private", "public"], help="GitHub repository visibility")
+    parser.add_argument("--github-description", help="GitHub repository description")
     parser.add_argument("--no-launch", action="store_true", help="Create the project but do not launch Codex")
+    parser.set_defaults(create_github_repo=None)
     args = parser.parse_args()
 
     answers = collect_answers(args)
@@ -278,6 +395,7 @@ def main() -> int:
     copy_template(destination)
     populate_project(destination, answers)
     init_git_repo(destination)
+    create_remote_repo(destination, answers)
 
     print(f"Created project at {destination}")
     if args.no_launch:
