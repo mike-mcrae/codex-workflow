@@ -252,12 +252,12 @@ def detect_problems() -> list[str]:
 
     for src_rel, dst_rel in WHOLE_DIR_MOVES.items():
         src = ROOT / src_rel
-        if src.exists():
+        if src.exists() and not src.is_symlink():
             problems.append(f"Legacy directory present: {src_rel} (expected under {dst_rel})")
 
     for src_rel, dst_rel in DIR_MOVES.items():
         src = ROOT / src_rel
-        if src.exists():
+        if src.exists() and not src.is_symlink():
             problems.append(f"Legacy directory present: {src_rel} (expected under {dst_rel})")
 
     for src_rel, dst_rel in FILE_MOVES.items():

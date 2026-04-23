@@ -22,11 +22,13 @@ printf "\nChecking repository paths\n"
 for path in \
   .workflow/config/project.toml \
   .workflow/protocols/intake-protocol.md \
+  .workflow/protocols/adoption-protocol.md \
   .workflow/protocols/structure-protocol.md \
   .workflow/protocols/specification.md \
   .workflow/protocols/memory-protocol.md \
   .workflow/memory/MEMORY.md \
   .workflow/scripts/bootstrap_project.py \
+  .workflow/scripts/codex_clean.py \
   .workflow/scripts/code_audit.py \
   .workflow/scripts/cleanup_structure.py \
   .workflow/scripts/orchestrate.py \

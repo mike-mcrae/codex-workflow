@@ -19,6 +19,8 @@ Researcher-facing work belongs in these top-level directories:
 - `manuscript/`: the paper itself
 - `notes/`: project brief and source notes
 
+For migrated existing projects, substructure inside these top-level directories can remain project-specific. The rigid rule is the top-level academic layout. The internal subfolders do not have to be identical across all projects.
+
 ## Hidden Internal Structure
 
 Internal automation belongs under `.workflow/`:

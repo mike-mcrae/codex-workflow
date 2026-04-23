@@ -61,6 +61,7 @@ If someone wants the same convenience layer you use locally, they can add it the
 Typical additions are:
 
 - install `new_project` as a global command
+- install `codex_clean` as a global command
 - wrap `codex` so it always launches through `.workflow/scripts/start_codex_session.sh`
 - run `gh auth login` once so new projects can be created as private GitHub repos automatically
 
@@ -86,6 +87,24 @@ gh auth login
 ```
 
 If they want unrestricted Codex sessions for that project, they can answer `y` when `new_project` asks whether to bypass approvals and sandbox. That preference is stored in `.workflow/config/project.toml` and reused by the session launcher.
+
+## `codex_clean`
+
+`codex_clean` is the adoption path for existing projects.
+
+Run it from the root of an existing project that was not created with this workflow.
+
+It will:
+
+1. create a new cleaned subdirectory inside the existing project
+2. install the workflow into that cleaned copy
+3. preserve a full copy of the original source under `preserved/source/`
+4. import the copied project into the canonical top-level academic structure
+5. archive legacy agent and workflow markdowns
+6. create compatibility symlinks for changed top-level names where safe
+7. write a migration report and initialize a fresh git repo in the cleaned copy
+
+Use this when you want a reviewable workflow-managed conversion rather than an in-place rewrite of the original repository.
 
 ## Automatic Structure Checks
 

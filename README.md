@@ -4,6 +4,11 @@ A ready-to-fork template for AI-assisted academic projects. It gives you a clean
 
 This template is for people who want Codex to help plan, draft, review, refine, and audit academic work without turning the repository itself into a mess.
 
+It supports two entry paths:
+
+- `new_project` for a fresh project
+- `codex_clean` for converting an existing project into a workflow-managed copy
+
 ## Quick Start
 
 1. Fork or clone this repo.
@@ -28,6 +33,18 @@ python3 .workflow/scripts/bootstrap_project.py --title "Paper Title" --author "Y
 5. Paste the starter prompt from [STARTER_PROMPT.md](STARTER_PROMPT.md).
 
 For full setup details, see [SETUP.md](SETUP.md).
+
+## Existing Projects
+
+If you already have a project that was not started from this template, use:
+
+```bash
+codex_clean
+```
+
+Run that inside the existing project root. It creates a new cleaned subdirectory, installs the workflow there, preserves a full copy of the original source inside the cleaned repo, restructures the copied version into the academic layout, archives legacy agent/workflow markdowns, and writes a migration report for review.
+
+The original project is left untouched.
 
 ## Starter Prompt
 
@@ -86,6 +103,7 @@ This repo now checks project structure automatically:
 
 - `new_project` checks and repairs structure before the first commit
 - `./.workflow/scripts/start_codex_session.sh` checks and repairs structure before each Codex session
+- `codex_clean` builds existing-project conversions around the canonical structure from the start
 - Codex can also run `/cleanup_structure` if you want an explicit cleanup pass
 
 So if a project starts to drift away from the standard academic layout, the normal entrypoints will pull it back into shape.
@@ -112,6 +130,7 @@ At project creation, this template can also store whether Codex should launch in
 This repo also supports extra convenience layers, but they are optional:
 
 - a global `new_project` command
+- a global `codex_clean` command
 - a shell wrapper that routes `codex` through the launcher
 - automatic private GitHub repo creation through `gh`
 
@@ -122,6 +141,7 @@ Those are personal machine integrations. They are not required for someone forki
 ```bash
 ./.workflow/scripts/validate_setup.sh
 python3 .workflow/scripts/bootstrap_project.py --title "Paper Title" --author "Your Name"
+python3 .workflow/scripts/codex_clean.py --project-root .
 ./.workflow/scripts/start_codex_session.sh
 python3 .workflow/scripts/orchestrate.py init-run --title "Paper Title"
 python3 .workflow/scripts/orchestrate.py prepare-stage
