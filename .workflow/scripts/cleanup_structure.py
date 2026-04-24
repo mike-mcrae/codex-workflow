@@ -151,6 +151,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def try_read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return None
+
+
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
@@ -235,7 +242,9 @@ def move_legacy_internal_scripts(operations: list[str], conflicts: list[str]) ->
 
 def rewrite_text_references(operations: list[str]) -> None:
     for path in iter_text_files(ROOT):
-        original = read_text(path)
+        original = try_read_text(path)
+        if original is None:
+            continue
         updated = original
         for pattern, replacement in REPLACEMENTS:
             updated = re.sub(pattern, replacement, updated)
@@ -271,7 +280,9 @@ def detect_problems() -> list[str]:
             problems.append(f"Legacy internal script present at researcher path: scripts/{name}")
 
     for path in iter_text_files(ROOT):
-        content = read_text(path)
+        content = try_read_text(path)
+        if content is None:
+            continue
         for pattern, _replacement in REPLACEMENTS:
             if re.search(pattern, content):
                 problems.append(f"Stale path reference in {path.relative_to(ROOT)}: {pattern}")

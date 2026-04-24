@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import textwrap
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -160,6 +161,13 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def try_read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return None
+
+
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
@@ -255,10 +263,49 @@ def implied_exclude_globs(special_instructions: str) -> list[str]:
     return patterns
 
 
-def parse_globs(value: str) -> list[str]:
-    if not value.strip():
+def split_glob_input(value: str, source_root: Path) -> list[str]:
+    text = value.strip()
+    if not text:
         return []
-    return [item.strip() for item in value.split(",") if item.strip()]
+
+    if "," in text or "\n" in text:
+        raw_parts = re.split(r"[\n,]+", text)
+        return [item.strip() for item in raw_parts if item.strip()]
+
+    source_prefix = str(source_root)
+    if text.count(source_prefix) > 1:
+        parts: list[str] = []
+        for segment in text.split(source_prefix):
+            segment = segment.strip()
+            if not segment:
+                continue
+            parts.append(f"{source_prefix}{segment}")
+        return parts
+
+    return [text]
+
+
+def normalize_exclude_globs(value: str, source_root: Path) -> list[str]:
+    normalized: list[str] = []
+    for item in split_glob_input(value, source_root):
+        candidate = item.strip()
+        if not candidate:
+            continue
+        if candidate.startswith(str(source_root)):
+            try:
+                rel = Path(candidate).resolve().relative_to(source_root)
+                normalized.append(rel.as_posix())
+                normalized.append(f"{rel.as_posix()}/**")
+                continue
+            except Exception:
+                pass
+        normalized.append(candidate)
+    # preserve order while deduplicating
+    return list(dict.fromkeys(normalized))
+
+
+def dedupe(values: Iterable[str]) -> list[str]:
+    return list(dict.fromkeys(values))
 
 
 def matches_glob(rel_path: str, patterns: list[str]) -> bool:
@@ -771,7 +818,9 @@ def rewrite_top_level_references(destination: Path, rewrite_map: dict[str, str])
             continue
         if path.suffix not in REWRITE_EXTENSIONS:
             continue
-        original = read_text(path)
+        original = try_read_text(path)
+        if original is None:
+            continue
         updated = original
         for old, new in rewrite_map.items():
             updated = re.sub(
@@ -792,14 +841,19 @@ def init_git_repo(project_dir: Path) -> None:
 def collect_args(args: argparse.Namespace) -> dict[str, object]:
     destination_name = args.destination_name or prompt("Cleaned folder name", default=DEFAULT_DEST_NAME, required=True)
     special_instructions = args.special_instructions or prompt("Special instructions (optional)")
-    exclude_globs_value = args.exclude_globs or prompt("Paths or globs to leave untouched in preserved/ (optional, comma-separated)")
+    exclude_globs_value = args.exclude_globs or prompt(
+        "Paths or globs to leave untouched in preserved/ (optional; prefer top-level names like backend,frontend)"
+    )
     bypass = args.dangerously_bypass_approvals_and_sandbox
     if bypass is None:
         bypass = prompt_yes_no("Allow Codex to bypass approvals and sandbox in the cleaned project", default=False)
     return {
         "destination_name": slugify(destination_name),
         "special_instructions": special_instructions,
-        "exclude_globs": parse_globs(exclude_globs_value) + implied_exclude_globs(special_instructions),
+        "exclude_globs": dedupe(
+            normalize_exclude_globs(exclude_globs_value, Path(args.project_root).expanduser().resolve())
+            + implied_exclude_globs(special_instructions)
+        ),
         "dangerously_bypass_approvals_and_sandbox": bypass,
     }
 
