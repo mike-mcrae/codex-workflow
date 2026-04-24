@@ -280,6 +280,8 @@ def detect_problems() -> list[str]:
             problems.append(f"Legacy internal script present at researcher path: scripts/{name}")
 
     for path in iter_text_files(ROOT):
+        if ".workflow" in path.parts:
+            continue
         content = try_read_text(path)
         if content is None:
             continue

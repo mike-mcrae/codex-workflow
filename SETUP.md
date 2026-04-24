@@ -98,11 +98,12 @@ It will:
 
 1. create a new cleaned subdirectory inside the existing project
 2. install the workflow into that cleaned copy
-3. preserve a full copy of the original source under `preserved/source/`
+3. archive a full copy of the original source under `.workflow/state/migration/source-snapshot/`
 4. import the copied project into the canonical top-level academic structure
-5. archive legacy agent and workflow markdowns
-6. create compatibility symlinks for changed top-level names where safe
-7. write a migration report and initialize a fresh git repo in the cleaned copy
+5. rewrite detected project paths into the new layout
+6. convert useful legacy notes and agent markdowns into the four-layer memory system
+7. quarantine excluded app or web material under `.workflow/state/migration/excluded/`
+8. write a migration report and initialize a fresh git repo in the cleaned copy
 
 Use this when you want a reviewable workflow-managed conversion rather than an in-place rewrite of the original repository.
 

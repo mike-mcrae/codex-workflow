@@ -42,7 +42,7 @@ If you already have a project that was not started from this template, use:
 codex_clean
 ```
 
-Run that inside the existing project root. It creates a new cleaned subdirectory, installs the workflow there, preserves a full copy of the original source inside the cleaned repo, restructures the copied version into the academic layout, archives legacy agent/workflow markdowns, and writes a migration report for review.
+Run that inside the existing project root. It creates a new cleaned subdirectory, installs the workflow there, archives the original source into hidden migration state, restructures the copied version into the canonical academic layout, rewrites project paths, converts useful legacy notes into the four-layer memory system, quarantines excluded app/web material outside the academic surface, and writes a migration report for review.
 
 The original project is left untouched.
 

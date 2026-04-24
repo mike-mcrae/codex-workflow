@@ -19,9 +19,9 @@ from pathlib import Path
 TEMPLATE_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DEST_NAME = "codex_cleaned"
 IGNORE_NAMES = {
+    ".DS_Store",
     ".git",
     "__pycache__",
-    ".DS_Store",
 }
 TEXT_EXTENSIONS = {
     ".bib",
@@ -42,55 +42,55 @@ TEXT_EXTENSIONS = {
     ".yml",
 }
 CODE_EXTENSIONS = {
-    ".py",
-    ".do",
     ".ado",
+    ".bash",
+    ".do",
+    ".ipynb",
+    ".jl",
+    ".m",
+    ".py",
     ".R",
     ".r",
     ".Rmd",
-    ".ipynb",
     ".sh",
-    ".bash",
     ".zsh",
-    ".jl",
-    ".m",
 }
 DATA_EXTENSIONS = {
+    ".bz2",
     ".csv",
+    ".db",
     ".dta",
-    ".xlsx",
-    ".xls",
-    ".parquet",
     ".feather",
-    ".rds",
+    ".gz",
+    ".json",
+    ".parquet",
     ".rdata",
+    ".rds",
     ".sav",
+    ".sqlite",
     ".tsv",
     ".txt",
-    ".zip",
-    ".gz",
-    ".bz2",
+    ".xls",
+    ".xlsx",
     ".xz",
-    ".sqlite",
-    ".db",
-    ".json",
+    ".zip",
 }
 MANUSCRIPT_EXTENSIONS = {
-    ".tex",
     ".bib",
-    ".docx",
-    ".doc",
-    ".pdf",
-    ".cls",
     ".bst",
+    ".cls",
+    ".doc",
+    ".docx",
+    ".pdf",
+    ".tex",
 }
 FIGURE_EXTENSIONS = {
+    ".eps",
+    ".jpeg",
+    ".jpg",
+    ".pdf",
     ".png",
     ".svg",
-    ".jpg",
-    ".jpeg",
-    ".pdf",
-    ".eps",
     ".tif",
     ".tiff",
 }
@@ -101,51 +101,102 @@ LOG_EXTENSIONS = {
 DOC_EXTENSIONS = {
     ".md",
     ".txt",
-    ".docx",
 }
+NOTE_KEYWORDS = {
+    "agenda",
+    "audit",
+    "brief",
+    "handover",
+    "literature",
+    "meeting",
+    "memo",
+    "motivation",
+    "note",
+    "notes",
+    "outline",
+    "plan",
+    "readme",
+    "todo",
+    "thought",
+}
+DECISION_PATTERNS = [
+    re.compile(r"\b(decision|decided|we decided|agreed|chosen|choice)\b", re.IGNORECASE),
+    re.compile(r"\b(use|using|adopt|adopted|prefer|preferred)\b", re.IGNORECASE),
+]
+RULE_PATTERNS = [
+    re.compile(r"\b(must|should|do not|don't|never|always|important|non-negotiable)\b", re.IGNORECASE),
+]
+OPEN_PATTERNS = [
+    re.compile(r"\b(todo|tbd|open question|follow[- ]up|next step|remaining)\b", re.IGNORECASE),
+]
 LEGACY_AGENT_KEYWORDS = {
     "agent",
     "agents",
-    "prompt",
-    "prompts",
-    "workflow",
-    "memory",
-    "instruction",
-    "instructions",
     "claude",
     "codex",
-    "review",
+    "instruction",
+    "instructions",
+    "memory",
     "planner",
+    "prompt",
+    "prompts",
+    "review",
+    "workflow",
 }
 APP_RELATED_NAMES = {
+    "android",
     "app",
     "apps",
-    "frontend",
     "backend",
-    "mobile",
-    "ios",
-    "android",
-    "web",
     "client",
+    "frontend",
+    "ios",
+    "mobile",
     "server",
     "ui",
+    "web",
+}
+APP_FILE_NAMES = {
+    "angular.json",
+    "next.config.js",
+    "next.config.mjs",
+    "package-lock.json",
+    "package.json",
+    "pnpm-lock.yaml",
+    "render.yaml",
+    "tsconfig.json",
+    "vite.config.js",
+    "vite.config.ts",
+    "yarn.lock",
 }
 CANONICAL_ROOTS = {"data", "scripts", "output", "manuscript", "notes"}
 REWRITE_EXTENSIONS = {
-    ".md",
-    ".txt",
-    ".toml",
-    ".tex",
-    ".py",
-    ".sh",
     ".do",
+    ".json",
+    ".md",
+    ".py",
     ".R",
     ".r",
+    ".sh",
+    ".tex",
+    ".toml",
+    ".txt",
     ".yaml",
     ".yml",
-    ".json",
+}
+MEMORY_TEXT_EXTENSIONS = {
+    ".bib",
+    ".md",
+    ".tex",
+    ".txt",
 }
 LARGE_FILE_BYTES = 10 * 1024 * 1024
+HIDDEN_SOURCE_SNAPSHOT = ".workflow/state/migration/source-snapshot"
+HIDDEN_EXCLUDED = ".workflow/state/migration/excluded"
+HIDDEN_UNCLASSIFIED = ".workflow/state/migration/unclassified"
+HIDDEN_CONFLICTS = ".workflow/state/migration/conflicts"
+LEGACY_AGENT_ARCHIVE = ".workflow/state/migration/legacy-agent-material"
+MEMORY_SOURCES_PATH = ".workflow/state/migration/imported-memory-sources.md"
 
 
 @dataclass
@@ -155,6 +206,16 @@ class MappingRecord:
     category: str
     mode: str
     notes: str = ""
+
+
+@dataclass
+class MemoryInsight:
+    summary: list[str]
+    rules: list[tuple[str, str]]
+    decisions: list[tuple[str, str]]
+    open_items: list[tuple[str, str]]
+    citations: list[str]
+    sources: list[str]
 
 
 def read_text(path: Path) -> str:
@@ -252,9 +313,9 @@ def set_section_value(text: str, heading: str, value: str) -> str:
 
 def implied_exclude_globs(special_instructions: str) -> list[str]:
     text = special_instructions.lower()
-    if "app" not in text:
+    if "app" not in text and "frontend" not in text and "backend" not in text and "web" not in text:
         return []
-    triggers = {"disregard", "ignore", "leave", "remain", "untouched", "not related"}
+    triggers = {"disregard", "ignore", "leave", "remain", "untouched", "not related", "exclude"}
     if not any(trigger in text for trigger in triggers):
         return []
     patterns: list[str] = []
@@ -267,11 +328,9 @@ def split_glob_input(value: str, source_root: Path) -> list[str]:
     text = value.strip()
     if not text:
         return []
-
     if "," in text or "\n" in text:
         raw_parts = re.split(r"[\n,]+", text)
         return [item.strip() for item in raw_parts if item.strip()]
-
     source_prefix = str(source_root)
     if text.count(source_prefix) > 1:
         parts: list[str] = []
@@ -281,7 +340,6 @@ def split_glob_input(value: str, source_root: Path) -> list[str]:
                 continue
             parts.append(f"{source_prefix}{segment}")
         return parts
-
     return [text]
 
 
@@ -300,7 +358,6 @@ def normalize_exclude_globs(value: str, source_root: Path) -> list[str]:
             except Exception:
                 pass
         normalized.append(candidate)
-    # preserve order while deduplicating
     return list(dict.fromkeys(normalized))
 
 
@@ -309,11 +366,18 @@ def dedupe(values: Iterable[str]) -> list[str]:
 
 
 def matches_glob(rel_path: str, patterns: list[str]) -> bool:
-    return any(fnmatch.fnmatch(rel_path, pattern) for pattern in patterns)
+    for pattern in patterns:
+        if fnmatch.fnmatch(rel_path, pattern):
+            return True
+        if fnmatch.fnmatch(f"{rel_path}/", pattern):
+            return True
+        if fnmatch.fnmatch(f"{rel_path}/placeholder", pattern):
+            return True
+    return False
 
 
 def preserve_copy(source_root: Path, destination: Path, destination_name: str) -> Path:
-    preserved_source = destination / "preserved" / "source"
+    preserved_source = destination / HIDDEN_SOURCE_SNAPSHOT
 
     def ignore(directory: str, names: list[str]) -> set[str]:
         ignored = set()
@@ -327,6 +391,59 @@ def preserve_copy(source_root: Path, destination: Path, destination_name: str) -
 
     shutil.copytree(source_root, preserved_source, ignore=ignore)
     return preserved_source
+
+
+def classify_script_path(name: str) -> str:
+    suffix = Path(name).suffix.lower()
+    lower = name.lower()
+    if suffix in {".do", ".ado"}:
+        return f"scripts/stata/{name}"
+    if suffix in {".r", ".rmd"}:
+        return f"scripts/r/{name}"
+    if suffix in {".sh", ".bash", ".zsh"} or lower == "makefile":
+        return f"scripts/shell/{name}"
+    if suffix in {".py", ".ipynb", ".jl", ".m"} or lower in {
+        "environment.yml",
+        "environment.yaml",
+        "pyproject.toml",
+        "requirements.txt",
+        "setup.py",
+    }:
+        return f"scripts/python/{name}"
+    return f"scripts/{name}"
+
+
+def classify_data_path(name: str, is_dir: bool) -> str:
+    lower = name.lower()
+    if any(token in lower for token in {"derived", "clean", "processed"}):
+        return f"data/derived/{name}"
+    if any(token in lower for token in {"external", "download", "source"}):
+        return f"data/external/{name}"
+    if not is_dir:
+        return f"data/raw/{name}"
+    return f"data/{name}"
+
+
+def classify_output_path(name: str) -> str:
+    lower = name.lower()
+    suffix = Path(name).suffix.lower()
+    if lower.endswith(".log") or suffix in LOG_EXTENSIONS:
+        return f"output/logs/{name}"
+    if any(token in lower for token in {"table", "tables"}):
+        return f"output/tables/{name}"
+    if any(token in lower for token in {"figure", "figures", "fig", "map", "maps", "plot", "plots", "image"}):
+        return f"output/figures/{name}"
+    if suffix in FIGURE_EXTENSIONS:
+        return f"output/figures/{name}"
+    return f"output/{name}"
+
+
+def classify_note_path(name: str) -> str:
+    return f"notes/imported/{name}"
+
+
+def classify_hidden_path(root: str, name: str) -> str:
+    return f"{root}/{name}"
 
 
 def is_legacy_agent_material(rel_path: Path) -> bool:
@@ -343,6 +460,8 @@ def score_directory(path: Path) -> dict[str, int]:
             continue
         suffix = file_path.suffix
         lower = file_path.name.lower()
+        if lower in APP_FILE_NAMES:
+            scores["code"] += 2
         if suffix in CODE_EXTENSIONS:
             scores["code"] += 1
         if suffix in DATA_EXTENSIONS:
@@ -356,83 +475,104 @@ def score_directory(path: Path) -> dict[str, int]:
     return scores
 
 
+def looks_like_app_material(name: str) -> bool:
+    lower = name.lower()
+    if lower in APP_RELATED_NAMES:
+        return True
+    if lower in APP_FILE_NAMES:
+        return True
+    return any(token in lower for token in {"frontend", "backend", "react", "next", "webapp"})
+
+
 def top_level_target(name: str, path: Path, special_instructions: str, exclude_globs: list[str]) -> tuple[str, str]:
     lower_name = name.lower()
     rel = path.name
 
     if matches_glob(rel, exclude_globs):
-        return ("preserved", f"preserved/{name}")
+        return ("excluded", classify_hidden_path(HIDDEN_EXCLUDED, name))
 
-    if lower_name in APP_RELATED_NAMES and implied_exclude_globs(special_instructions):
-        return ("preserved", f"preserved/{name}")
+    if looks_like_app_material(lower_name):
+        return ("excluded", classify_hidden_path(HIDDEN_EXCLUDED, name))
 
     if lower_name in {"data", "scripts", "output", "manuscript"}:
         return (lower_name, lower_name)
-
     if lower_name == "notes":
-        return ("notes", "notes/imported/notes")
-
+        return ("notes", "notes/imported")
     if lower_name in {"paper", "draft", "drafts", "writeup", "tex"}:
         return ("manuscript", "manuscript")
+    if lower_name in {"docs", "doc", "documentation"}:
+        return ("notes", "notes/imported/docs")
+    if lower_name in {"logs", "log"}:
+        return ("output", "output/logs")
 
-    if lower_name in {"analysis", "code", "src", "program", "programs", "notebooks", "notebook", "do", "dofiles"}:
+    if any(token in lower_name for token in {"analysis", "code", "src", "program", "notebook", "dofile", "script"}):
         return ("scripts", f"scripts/{name}")
-
-    if lower_name in {"raw", "input", "inputs", "dataset", "datasets", "clean", "cleaned", "processed", "derived", "external", "downloads"}:
-        return ("data", f"data/{name}")
-
-    if lower_name in {"results", "result", "figures", "figs", "plots", "tables", "logs", "log", "estimates"}:
-        return ("output", f"output/{name}")
-
-    if lower_name in {"docs", "doc", "memos", "memo", "outline", "literature", "readings"}:
-        return ("notes", f"notes/{name}")
-
-    if lower_name in LEGACY_AGENT_KEYWORDS:
-        return ("legacy_agent_material", f".workflow/state/migration/legacy-agent-material/{name}")
+    if any(token in lower_name for token in {"data", "dataset", "raw", "clean", "cleaned", "processed", "derived", "external", "download"}):
+        return ("data", classify_data_path(name, is_dir=True))
+    if any(token in lower_name for token in {"result", "figure", "fig", "plot", "map", "table", "log", "estimate"}):
+        return ("output", classify_output_path(name))
+    if any(token in lower_name for token in {"memo", "outline", "literature", "reading", "note", "meeting", "plan"}):
+        return ("notes", classify_note_path(name))
+    if is_legacy_agent_material(Path(name)):
+        return ("legacy_agent_material", f"{LEGACY_AGENT_ARCHIVE}/{name}")
 
     scores = score_directory(path)
     best = max(scores, key=scores.get)
     if scores[best] == 0:
-        return ("preserved", f"preserved/{name}")
+        return ("unclassified", classify_hidden_path(HIDDEN_UNCLASSIFIED, name))
     if best == "code":
         return ("scripts", f"scripts/{name}")
     if best == "data":
-        return ("data", f"data/{name}")
+        return ("data", classify_data_path(name, is_dir=True))
     if best == "manuscript":
-        return ("manuscript", f"manuscript/{name}")
+        return ("manuscript", f"manuscript/imported/{name}")
     if best == "output":
-        return ("output", f"output/{name}")
+        return ("output", classify_output_path(name))
     if best == "docs":
-        return ("notes", f"notes/{name}")
-    return ("preserved", f"preserved/{name}")
+        return ("notes", classify_note_path(name))
+    return ("unclassified", classify_hidden_path(HIDDEN_UNCLASSIFIED, name))
 
 
 def classify_root_file(path: Path, special_instructions: str, exclude_globs: list[str]) -> tuple[str, str]:
     name = path.name
     lower_name = name.lower()
-    suffix = path.suffix
+    suffix = path.suffix.lower()
 
     if name == ".gitignore":
         return ("source_gitignore", ".workflow/state/migration/original-gitignore.txt")
 
     if matches_glob(name, exclude_globs):
-        return ("preserved", f"preserved/{name}")
+        return ("excluded", classify_hidden_path(HIDDEN_EXCLUDED, name))
 
-    if lower_name in APP_RELATED_NAMES and implied_exclude_globs(special_instructions):
-        return ("preserved", f"preserved/{name}")
+    if looks_like_app_material(lower_name):
+        return ("excluded", classify_hidden_path(HIDDEN_EXCLUDED, name))
 
     if is_legacy_agent_material(Path(name)):
-        return ("legacy_agent_material", f".workflow/state/migration/legacy-agent-material/{name}")
+        return ("legacy_agent_material", f"{LEGACY_AGENT_ARCHIVE}/{name}")
 
+    if lower_name == "license":
+        return ("root_doc", "LICENSE")
+    if lower_name in {"readme.md", "readme.txt", "readme"}:
+        return ("notes", "notes/imported/original-README.md")
+    if lower_name in {"requirements.txt", "pyproject.toml", "setup.py", "environment.yml", "environment.yaml", "makefile"}:
+        return ("scripts", classify_script_path(name))
+    if lower_name in NOTE_KEYWORDS or any(token in lower_name for token in NOTE_KEYWORDS):
+        return ("notes", classify_note_path(name))
     if suffix in CODE_EXTENSIONS:
-        return ("scripts", f"scripts/{name}")
+        return ("scripts", classify_script_path(name))
     if suffix in DATA_EXTENSIONS:
-        return ("data", f"data/{name}")
+        return ("data", classify_data_path(name, is_dir=False))
     if suffix in MANUSCRIPT_EXTENSIONS:
-        return ("manuscript", f"manuscript/{name}")
+        if lower_name == "main.tex":
+            return ("manuscript", "manuscript/main.tex")
+        return ("manuscript", f"manuscript/imported/{name}")
+    if suffix in LOG_EXTENSIONS:
+        return ("output", classify_output_path(name))
+    if suffix in FIGURE_EXTENSIONS:
+        return ("output", classify_output_path(name))
     if suffix in DOC_EXTENSIONS:
-        return ("notes", f"notes/imported/{name}")
-    return ("preserved", f"preserved/{name}")
+        return ("notes", classify_note_path(name))
+    return ("unclassified", classify_hidden_path(HIDDEN_UNCLASSIFIED, name))
 
 
 def ensure_parent(path: Path) -> None:
@@ -494,33 +634,24 @@ def merge_tree_copy(
             copied_files.append(final_path)
 
 
-def create_relative_symlink(target: Path, link_path: Path) -> None:
-    ensure_parent(link_path)
-    if link_path.exists() or link_path.is_symlink():
-        return
-    relative_target = os.path.relpath(target, start=link_path.parent)
-    link_path.symlink_to(relative_target)
-
-
 def append_ignore_rules(destination: Path, source_root: Path, large_paths: list[str]) -> None:
     path = destination / ".gitignore"
     existing = read_text(path).rstrip() + "\n\n"
     source_ignore = source_root / ".gitignore"
     extra = [
         "# Migration-specific ignores",
-        "preserved/**",
-        "!preserved/",
+        ".workflow/state/migration/source-snapshot/",
+        ".workflow/state/migration/excluded/",
+        ".workflow/state/migration/unclassified/",
         ".workflow/state/migration/conflicts/",
         "data/**",
         "!data/",
-        "!data/.gitkeep",
         "!data/README.md",
         "!data/raw/",
         "!data/derived/",
         "!data/external/",
         "output/**",
         "!output/",
-        "!output/.gitkeep",
         "!output/README.md",
         "!output/figures/",
         "!output/tables/",
@@ -537,38 +668,294 @@ def append_ignore_rules(destination: Path, source_root: Path, large_paths: list[
 
 
 def extract_readme_summary(source_copy_root: Path) -> str:
-    for candidate in ("README.md", "Readme.md", "readme.md"):
+    for candidate in ("README.md", "Readme.md", "readme.md", "README.txt", "README"):
         path = source_copy_root / candidate
-        if path.exists():
-            text = read_text(path)
-            paragraphs = [block.strip() for block in re.split(r"\n\s*\n", text) if block.strip()]
-            for block in paragraphs:
-                if not block.startswith("#"):
-                    line = " ".join(block.splitlines()).strip()
-                    if line:
-                        return line
+        if not path.exists():
+            continue
+        text = try_read_text(path)
+        if text is None:
+            continue
+        paragraphs = [block.strip() for block in re.split(r"\n\s*\n", text) if block.strip()]
+        for block in paragraphs:
+            if block.startswith("#"):
+                continue
+            line = " ".join(block.splitlines()).strip()
+            if line:
+                return line
     return ""
+
+
+def clean_snippet(text: str, limit: int = 220) -> str:
+    single_line = re.sub(r"\s+", " ", text).strip()
+    if len(single_line) <= limit:
+        return single_line
+    clipped = single_line[: limit - 3].rstrip(" ,;:")
+    return f"{clipped}..."
+
+
+def paragraphs_from_text(text: str) -> list[str]:
+    chunks = [chunk.strip() for chunk in re.split(r"\n\s*\n", text) if chunk.strip()]
+    paragraphs: list[str] = []
+    for chunk in chunks:
+        if chunk.startswith("#"):
+            continue
+        if chunk.lstrip().startswith("\\"):
+            continue
+        cleaned = clean_snippet(chunk, limit=320)
+        if cleaned:
+            paragraphs.append(cleaned)
+    return paragraphs
+
+
+def should_skip_memory_path(rel_path: str, exclude_globs: list[str]) -> bool:
+    if matches_glob(rel_path, exclude_globs):
+        return True
+    first = rel_path.split("/", 1)[0].lower()
+    return looks_like_app_material(first)
+
+
+def extract_bib_keys(text: str) -> list[str]:
+    return re.findall(r"@\w+\{([^,]+),", text)
+
+
+def collect_memory_insights(source_copy_root: Path, exclude_globs: list[str]) -> MemoryInsight:
+    summary: list[str] = []
+    rules: list[tuple[str, str]] = []
+    decisions: list[tuple[str, str]] = []
+    open_items: list[tuple[str, str]] = []
+    citations: list[str] = []
+    sources: list[str] = []
+    seen_summary: set[str] = set()
+    seen_rules: set[str] = set()
+    seen_decisions: set[str] = set()
+    seen_open: set[str] = set()
+    seen_sources: set[str] = set()
+
+    for path in sorted(source_copy_root.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(source_copy_root).as_posix()
+        if any(part in IGNORE_NAMES for part in path.parts):
+            continue
+        if should_skip_memory_path(rel, exclude_globs):
+            continue
+        suffix = path.suffix.lower()
+        lower_name = path.name.lower()
+        if suffix not in MEMORY_TEXT_EXTENSIONS and lower_name not in {"readme", "readme.md", "readme.txt"}:
+            continue
+        text = try_read_text(path)
+        if text is None:
+            continue
+
+        if rel not in seen_sources:
+            sources.append(rel)
+            seen_sources.add(rel)
+
+        if suffix == ".bib":
+            citations.extend(extract_bib_keys(text))
+
+        for paragraph in paragraphs_from_text(text):
+            lower = paragraph.lower()
+            if len(summary) < 4 and (
+                "project" in lower
+                or "paper" in lower
+                or "study" in lower
+                or "analysis" in lower
+                or "research" in lower
+                or "evidence" in lower
+            ):
+                key = lower
+                if key not in seen_summary:
+                    summary.append(paragraph)
+                    seen_summary.add(key)
+            if "?" in paragraph or any(pattern.search(paragraph) for pattern in OPEN_PATTERNS):
+                key = lower
+                if key not in seen_open and len(open_items) < 10:
+                    open_items.append((paragraph, rel))
+                    seen_open.add(key)
+                continue
+            if any(pattern.search(paragraph) for pattern in RULE_PATTERNS):
+                key = lower
+                if key not in seen_rules and len(rules) < 10:
+                    rules.append((paragraph, rel))
+                    seen_rules.add(key)
+            if any(pattern.search(paragraph) for pattern in DECISION_PATTERNS):
+                key = lower
+                if key not in seen_decisions and len(decisions) < 10:
+                    decisions.append((paragraph, rel))
+                    seen_decisions.add(key)
+
+    citations = dedupe(citations)[:20]
+    return MemoryInsight(
+        summary=summary,
+        rules=rules,
+        decisions=decisions,
+        open_items=open_items,
+        citations=citations,
+        sources=sources[:50],
+    )
+
+
+def append_decision_index(destination: Path, date: str, topic: str, file_name: str, status: str) -> None:
+    index_path = destination / ".workflow" / "decisions" / "INDEX.md"
+    text = read_text(index_path).rstrip() + "\n"
+    row = f"| {date} | {topic} | [{file_name}]({file_name}) | {status} |"
+    if row not in text:
+        text += row + "\n"
+    write_text(index_path, text)
+
+
+def write_imported_context_topic(destination: Path, insight: MemoryInsight) -> None:
+    topic_path = destination / ".workflow" / "memory" / "topics" / "imported-context.md"
+    lines = [
+        "# Imported Context",
+        "",
+        "Context extracted during `codex_clean` from the legacy project snapshot.",
+        "",
+        "## Imported Sources",
+        "",
+    ]
+    if insight.sources:
+        lines.extend(f"- `{item}`" for item in insight.sources)
+    else:
+        lines.append("- No text sources were extracted.")
+    lines.extend(["", "## Project Summary Signals", ""])
+    if insight.summary:
+        lines.extend(f"- {item}" for item in insight.summary)
+    else:
+        lines.append("- No stable summary paragraph was extracted automatically.")
+    lines.extend(["", "## Stable Rules", ""])
+    if insight.rules:
+        lines.extend(f"- {text} Source: `{source}`." for text, source in insight.rules)
+    else:
+        lines.append("- No durable rules were extracted automatically.")
+    lines.extend(["", "## Imported Decisions", ""])
+    if insight.decisions:
+        lines.extend(f"- {text} Source: `{source}`." for text, source in insight.decisions)
+    else:
+        lines.append("- No decision-like statements were extracted automatically.")
+    lines.extend(["", "## Open Items", ""])
+    if insight.open_items:
+        lines.extend(f"- {text} Source: `{source}`." for text, source in insight.open_items)
+    else:
+        lines.append("- No open-item signals were extracted automatically.")
+    write_text(topic_path, "\n".join(lines) + "\n")
+
+
+def write_memory_sources(destination: Path, insight: MemoryInsight) -> None:
+    path = destination / MEMORY_SOURCES_PATH
+    lines = [
+        "# Imported Memory Sources",
+        "",
+        "These legacy project files were scanned to synthesize the new four-layer memory layout.",
+        "",
+    ]
+    if insight.sources:
+        lines.extend(f"- `{item}`" for item in insight.sources)
+    else:
+        lines.append("- No memory source files were detected.")
+    write_text(path, "\n".join(lines) + "\n")
+
+
+def write_imported_decision_file(destination: Path, insight: MemoryInsight, date_stamp: str) -> str | None:
+    if not insight.decisions:
+        return None
+    file_name = f"{date_stamp}-imported-project-decisions.md"
+    decision_path = destination / ".workflow" / "decisions" / file_name
+    bullets = "\n".join(f"- {text} Source: `{source}`." for text, source in insight.decisions)
+    content = textwrap.dedent(
+        f"""\
+        ---
+        layer: decision
+        date: {date_stamp}
+        topic: imported-project-decisions
+        status: imported
+        superseded_by:
+        review_date:
+        ---
+
+        # Decision Record
+
+        ## Context
+
+        `codex_clean` extracted prior decision-like statements from the legacy project materials and consolidated them here for citation-only reference.
+
+        ## Options Considered
+
+        ### Option A
+
+        - Pros: Leave prior decisions buried in legacy notes and agent markdowns.
+        - Cons: Future sessions would need to rediscover them repeatedly.
+        - Verdict: Rejected.
+
+        ### Option B
+
+        - Pros: Consolidate those statements into a dated imported decision record with provenance.
+        - Cons: Some extracted items may still need refinement after project review.
+        - Verdict: Accepted.
+
+        ## Decision
+
+        Keep extracted historical decisions in Layer 2 as an imported reference file.
+
+        ## Rationale
+
+        This makes prior rationale discoverable without forcing old documents into the always-read memory layer.
+
+        ## Implementation
+
+        {bullets}
+
+        ## Risks
+
+        - Some extracted statements may reflect tentative notes rather than fully settled decisions.
+        - The user or Codex should prune or supersede weak imports during early project review.
+
+        ## Consequences
+
+        - Prior rationale is now cited from Layer 2 instead of remaining scattered across legacy notes.
+
+        ## Follow-Up Actions
+
+        - Confirm which imported decisions remain active.
+        - Supersede outdated decisions with project-specific decision logs as the cleaned repo stabilizes.
+        """
+    )
+    write_text(decision_path, content)
+    append_decision_index(destination, date_stamp, "imported-project-decisions", file_name, "imported")
+    return file_name
 
 
 def populate_adopted_project_files(
     destination: Path,
     source_root: Path,
+    source_copy_root: Path,
     special_instructions: str,
     exclude_globs: list[str],
     records: list[MappingRecord],
     conflicts: list[str],
     legacy_docs: list[str],
+    insight: MemoryInsight,
 ) -> None:
     brief_path = destination / "notes" / "project-brief.md"
     notes_path = destination / "notes" / "source-notes.md"
     memory_path = destination / ".workflow" / "memory" / "MEMORY.md"
     session_log_path = destination / ".workflow" / "memory" / "session-log.md"
-    decision_path = destination / ".workflow" / "decisions" / f"{datetime.now().strftime('%Y-%m-%d')}-existing-project-migration.md"
+    date_stamp = datetime.now().strftime("%Y-%m-%d")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    migration_decision_file = f"{date_stamp}-existing-project-migration.md"
+    decision_path = destination / ".workflow" / "decisions" / migration_decision_file
 
-    readme_summary = extract_readme_summary(destination / "preserved" / "source")
-    project_description = special_instructions or readme_summary or "Imported from an existing project and normalized into the Codex workflow structure."
+    readme_summary = extract_readme_summary(source_copy_root)
+    project_description = insight.summary[0] if insight.summary else readme_summary
+    if not project_description:
+        project_description = "Imported from an existing project and normalized into the Codex workflow structure."
     data_targets = sorted(
-        {record.destination_rel for record in records if record.category == "data" and not record.destination_rel.endswith(".txt")}
+        {
+            record.destination_rel
+            for record in records
+            if record.category == "data" and not record.destination_rel.endswith(".txt")
+        }
     )
 
     brief = read_text(brief_path)
@@ -579,40 +966,43 @@ def populate_adopted_project_files(
     brief = set_section_value(
         brief,
         "Research Question",
-        "TBD after reviewing the migrated repository, preserved source copy, and migration report.",
+        insight.summary[1] if len(insight.summary) > 1 else "TBD after reviewing the migrated repository and migration report.",
     )
     brief = set_section_value(
         brief,
         "Why This Matters",
-        "This project was migrated into the Codex workflow so planning, review, memory, and cleanup can proceed in a stable academic structure.",
+        insight.summary[2] if len(insight.summary) > 2 else "This project was migrated into the Codex workflow so planning, review, memory, and cleanup can proceed inside a stable academic structure.",
     )
     brief = set_section_value(
         brief,
         "Proposed Contribution",
-        "First stabilize the imported project, then refine the substantive contribution once the migrated structure has been reviewed.",
+        insight.summary[3] if len(insight.summary) > 3 else "First stabilize the imported project, then refine the substantive contribution once the migrated structure has been reviewed.",
     )
     brief = set_section_value(brief, "Paper Type", "Imported existing project")
     brief = set_section_value(brief, "Target Reader Or Journal", "TBD after migration review")
     constraints = [
-        "- Original source preserved at `preserved/source/`.",
+        f"- Hidden source snapshot at `{HIDDEN_SOURCE_SNAPSHOT}/` for provenance and comparison.",
         "- Migration report at `.workflow/state/migration/report.md`.",
-        "- Review conflicts before deleting compatibility symlinks or preserved content.",
+        "- Only the canonical academic surface should be used for ongoing work.",
     ]
     if exclude_globs:
-        constraints.append(f"- Paths preserved without restructuring: {', '.join(exclude_globs)}.")
+        constraints.append(f"- Excluded paths held outside the academic surface: {', '.join(exclude_globs)}.")
     brief = set_section_value(brief, "Constraints", "\n".join(constraints))
-    non_negotiables = ["- Do not edit the preserved source copy in place."]
+    non_negotiables = [
+        f"- Do not edit `{HIDDEN_SOURCE_SNAPSHOT}/` in place.",
+        "- Keep researcher work in `data/`, `scripts/`, `output/`, `manuscript/`, and `notes/` only.",
+    ]
     if special_instructions:
         non_negotiables.append(f"- Special instructions: {special_instructions}")
     brief = set_section_value(brief, "Non-Negotiables", "\n".join(non_negotiables))
     write_text(brief_path, brief)
 
     source_notes = read_text(notes_path)
-    source_notes = set_section_value(
-        source_notes,
-        "Key Papers",
-        "TBD from the imported manuscript, notes, and bibliography files.",
-    )
+    if insight.citations:
+        key_papers = "\n".join(f"- `{item}`" for item in insight.citations[:12])
+    else:
+        key_papers = "TBD from the imported manuscript, notes, and bibliography files."
+    source_notes = set_section_value(source_notes, "Key Papers", key_papers)
     source_notes = set_section_value(
         source_notes,
         "Data",
@@ -621,49 +1011,61 @@ def populate_adopted_project_files(
     source_notes = set_section_value(
         source_notes,
         "Identification Strategy Notes",
-        "TBD after inspecting imported code, manuscript sections, and legacy notes.",
+        insight.rules[0][0] if insight.rules else "TBD after inspecting imported code, manuscript sections, and legacy notes.",
     )
     source_notes = set_section_value(
         source_notes,
         "Empirical Design Notes",
-        "TBD after reviewing imported scripts and outputs in the cleaned repository.",
+        insight.decisions[0][0] if insight.decisions else "TBD after reviewing imported scripts and outputs in the cleaned repository.",
     )
     open_questions = [
         "- Review `.workflow/state/migration/report.md`.",
-        "- Decide whether preserved paths should remain, be archived, or be migrated further.",
+        "- Confirm that rewritten paths resolve for the main empirical pipeline.",
     ]
     if conflicts:
-        open_questions.append(f"- Resolve {len(conflicts)} migration conflict(s) under `.workflow/state/migration/conflicts/`.")
+        open_questions.append(f"- Resolve {len(conflicts)} migration conflict(s) under `{HIDDEN_CONFLICTS}/`.")
+    for item, source in insight.open_items[:5]:
+        open_questions.append(f"- {item} Source: `{source}`.")
     source_notes = set_section_value(source_notes, "Open Questions", "\n".join(open_questions))
     source_notes = set_section_value(
         source_notes,
         "Citations To Verify",
-        "Imported bibliography and manuscript citations should be checked after the first Codex review pass.",
+        "\n".join(f"- `{item}`" for item in insight.citations[:12]) or "Imported bibliography and manuscript citations should be checked after the first Codex review pass.",
     )
     write_text(notes_path, source_notes)
 
-    memory = read_text(memory_path).rstrip() + "\n\n"
-    memory += f"- `[PROJECT:title] {source_root.name}`\n"
-    memory += "- `[PROJECT:status] existing project`\n"
-    memory += "- `[PROJECT:migration] Imported into a workflow-managed review copy; original source preserved at `preserved/source/`.\n"
-    if special_instructions:
-        memory += f"- `[PROJECT:special_instructions] {special_instructions}`\n"
-    if legacy_docs:
-        memory += "- `[PROJECT:legacy_agent_material] Archived legacy workflow and agent documents under `.workflow/state/migration/legacy-agent-material/`.\n"
-    write_text(memory_path, memory)
+    write_imported_context_topic(destination, insight)
+    write_memory_sources(destination, insight)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    memory_lines = [read_text(memory_path).rstrip(), "", f"- `[PROJECT:title]` {source_root.name}", "- `[PROJECT:status]` existing project"]
+    memory_lines.append(
+        f"- `[RULE:surface]` Work from the canonical academic surface only; raw migration material lives under `{HIDDEN_SOURCE_SNAPSHOT}/` and related hidden migration paths."
+    )
+    memory_lines.append(
+        "- `[LEARN:imported_context]` Imported context is summarized in `.workflow/memory/topics/imported-context.md`."
+    )
+    memory_lines.append(
+        "- `[LEARN:migration_report]` Migration details and file map live in `.workflow/state/migration/report.md` and `.workflow/state/migration/file-map.csv`."
+    )
+    if special_instructions:
+        memory_lines.append(f"- `[RULE:special_instructions]` {special_instructions}")
+    for rule_text, source in insight.rules[:4]:
+        memory_lines.append(f"- `[LEARN:imported_rule]` {rule_text} Source: `{source}`.")
+    if legacy_docs:
+        memory_lines.append(f"- `[LEARN:legacy_agent_material]` Archived legacy workflow material under `{LEGACY_AGENT_ARCHIVE}/`.")
+    write_text(memory_path, "\n".join(memory_lines).rstrip() + "\n")
+
     session_entry = "\n".join(
         [
             "",
             f"## {timestamp}: Existing project migration",
             "",
-            f"- Summary: Migrated `{source_root.name}` into a reviewable Codex workflow copy.",
-            "- Inputs used: existing project files, optional special instructions, and optional exclusion globs.",
-            "- Outputs produced: canonical researcher-facing structure, preserved source copy, migration report, and compatibility symlinks.",
-            "- Decisions and rationale: Chose a reviewable copied migration rather than in-place restructuring to preserve the original project.",
-            "- Open items: Inspect the migration report, preserved source, and any conflict files before adopting the cleaned repo as the working version.",
-            "- Next recommended action: Start Codex in this cleaned repo and ask it to inventory the imported project before substantive edits.",
+            f"- Summary: Migrated `{source_root.name}` into a workflow-managed academic project copy with canonical top-level structure.",
+            "- Inputs used: legacy project files, optional special instructions, exclusion globs, and imported note extraction.",
+            "- Outputs produced: canonical researcher-facing structure, hidden migration archive, rewritten paths, migration report, and four-layer memory seed.",
+            "- Decisions and rationale: Performed migration in a new subdirectory so the original repo remained untouched while the cleaned copy became the workflow-managed working candidate.",
+            "- Open items: Review the migration report, inspect any conflicts, and validate the main empirical pipeline inside the cleaned repo.",
+            "- Next recommended action: Start Codex in this cleaned repo and ask it to audit the migrated structure before substantive work.",
             "",
         ]
     )
@@ -673,7 +1075,7 @@ def populate_adopted_project_files(
         f"""\
         ---
         layer: decision
-        date: {datetime.now().strftime('%Y-%m-%d')}
+        date: {date_stamp}
         topic: existing-project-migration
         status: active
         superseded_by:
@@ -696,42 +1098,45 @@ def populate_adopted_project_files(
 
         ### Option B
 
-        - Pros: Create a new cleaned copy with preserved source material and compatibility links.
+        - Pros: Create a new cleaned copy with hidden migration archive, canonical top-level academic structure, rewritten paths, and imported memory.
         - Cons: Requires review before adoption and duplicates the project for inspection.
         - Verdict: Accepted.
 
         ## Decision
 
-        Create a standalone cleaned repository inside a new subdirectory, preserve the full original source copy under `preserved/source/`, and normalize the researcher-facing structure around that copied version.
+        Create a standalone cleaned repository inside a new subdirectory, archive the original source under `{HIDDEN_SOURCE_SNAPSHOT}/`, and normalize the researcher-facing project into the canonical academic workflow surface.
 
         ## Rationale
 
-        This keeps the original project untouched while giving Codex a stable workflow-managed version to operate on.
+        This keeps the original project untouched while giving Codex a stable workflow-managed version that behaves like a repo started inside the workflow.
 
         ## Implementation
 
-        - Imported the project into the canonical top-level academic structure.
-        - Archived legacy agent and workflow documents into `.workflow/state/migration/legacy-agent-material/`.
-        - Wrote migration memory, notes, and a migration report.
+        - Imported the project into `data/`, `scripts/`, `output/`, `manuscript/`, and `notes/`.
+        - Archived excluded, unclassified, and legacy agent material under hidden migration state.
+        - Rewrote path references across migrated text files.
+        - Seeded Layer 1, Layer 2, and Layer 3 memory from imported notes and legacy workflow material.
 
         ## Risks
 
-        - Some path assumptions may still need manual follow-up despite compatibility symlinks.
-        - Preserved content may contain material that should later be archived or deleted once migration is complete.
+        - Some path assumptions may still require manual follow-up if they depended on highly project-specific conventions.
+        - Imported memory may contain tentative notes that should be pruned after review.
 
         ## Consequences
 
         - The cleaned repository is immediately usable with the Codex workflow.
-        - The preserved source remains available for comparison.
+        - The source snapshot remains available for comparison without cluttering the academic surface.
 
         ## Follow-Up Actions
 
         - Review `.workflow/state/migration/report.md`.
-        - Resolve any files copied into `.workflow/state/migration/conflicts/`.
-        - Decide whether compatibility symlinks should remain long term.
+        - Resolve any files copied into `{HIDDEN_CONFLICTS}/`.
+        - Confirm the main empirical scripts and manuscript compile paths after migration.
         """
     )
     write_text(decision_path, decision)
+    append_decision_index(destination, date_stamp, "existing-project-migration", migration_decision_file, "active")
+    write_imported_decision_file(destination, insight, date_stamp)
 
 
 def write_migration_report(
@@ -739,9 +1144,9 @@ def write_migration_report(
     source_root: Path,
     records: list[MappingRecord],
     conflicts: list[str],
-    symlinks: list[str],
     special_instructions: str,
     exclude_globs: list[str],
+    insight: MemoryInsight,
 ) -> None:
     migration_root = destination / ".workflow" / "state" / "migration"
     migration_root.mkdir(parents=True, exist_ok=True)
@@ -764,27 +1169,46 @@ def write_migration_report(
         f"- Special instructions: {special_instructions or 'None provided.'}",
         f"- Explicit exclusion globs: {', '.join(exclude_globs) if exclude_globs else 'None.'}",
         "",
+        "## Outcome",
+        "",
+        "- The cleaned repo was rebuilt around the canonical academic surface only:",
+        "  - `data/`",
+        "  - `scripts/`",
+        "  - `output/`",
+        "  - `manuscript/`",
+        "  - `notes/`",
+        "- Legacy leftovers were routed into hidden migration state instead of remaining visible at the top level.",
+        "",
         "## Summary",
         "",
         f"- Total mapped items: {len(records)}",
-        f"- Compatibility symlinks created: {len(symlinks)}",
         f"- Conflicts captured for manual review: {len(conflicts)}",
+        f"- Imported memory sources scanned: {len(insight.sources)}",
+        f"- Imported decision snippets extracted: {len(insight.decisions)}",
+        "",
+        "## Hidden Migration Paths",
+        "",
+        f"- Source snapshot: `{HIDDEN_SOURCE_SNAPSHOT}/`",
+        f"- Excluded material: `{HIDDEN_EXCLUDED}/`",
+        f"- Unclassified material: `{HIDDEN_UNCLASSIFIED}/`",
+        f"- Conflict copies: `{HIDDEN_CONFLICTS}/`",
+        f"- Legacy agent material: `{LEGACY_AGENT_ARCHIVE}/`",
         "",
         "## Category Breakdown",
         "",
     ]
     for category in sorted(grouped):
         lines.append(f"- `{category}`: {len(grouped[category])}")
-    lines.extend(["", "## Compatibility Symlinks", ""])
-    if symlinks:
-        lines.extend(f"- `{item}`" for item in symlinks)
-    else:
-        lines.append("- None.")
     lines.extend(["", "## Conflicts", ""])
     if conflicts:
         lines.extend(f"- {item}" for item in conflicts)
     else:
         lines.append("- None.")
+    lines.extend(["", "## Imported Memory Outputs", ""])
+    lines.append("- `.workflow/memory/MEMORY.md` updated with durable migration rules and imported project signals.")
+    lines.append("- `.workflow/memory/topics/imported-context.md` created from extracted notes and legacy docs.")
+    lines.append("- `.workflow/memory/session-log.md` appended with migration state.")
+    lines.append("- `.workflow/decisions/` populated with migration and imported-decision records.")
     write_text(report_path, "\n".join(lines) + "\n")
 
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
@@ -803,12 +1227,18 @@ def write_migration_report(
 
 
 def rewrite_top_level_references(destination: Path, rewrite_map: dict[str, str]) -> None:
-    skip_parts = {".git", "__pycache__", "preserved", ".workflow"}
+    skip_parts = {".git", "__pycache__", ".workflow", "source-snapshot", "excluded", "unclassified", "conflicts"}
     skip_files = {
         destination / "README.md",
         destination / "SETUP.md",
         destination / "STARTER_PROMPT.md",
     }
+
+    def replacement_for(path: Path, new_rel: str) -> str:
+        if path.suffix.lower() in {".tex", ".bib"}:
+            return os.path.relpath(destination / new_rel, start=path.parent).replace(os.sep, "/")
+        return new_rel
+
     for path in destination.rglob("*"):
         if not path.is_file():
             continue
@@ -823,9 +1253,13 @@ def rewrite_top_level_references(destination: Path, rewrite_map: dict[str, str])
             continue
         updated = original
         for old, new in rewrite_map.items():
+            file_specific = replacement_for(path, new)
+            updated = re.sub(rf"(?<![A-Za-z0-9_.-]){re.escape(old)}(/)", f"{file_specific}/", updated)
+            updated = re.sub(rf"(?<![A-Za-z0-9_.-])\./{re.escape(old)}(/)", f"./{file_specific}/", updated)
+            updated = re.sub(rf"(?<![A-Za-z0-9_.-])\.\./{re.escape(old)}(/)", f"../{file_specific}/", updated)
             updated = re.sub(
-                rf"(?<![A-Za-z0-9_.-]){re.escape(old)}(/)",
-                f"{new}/",
+                rf"(?<![A-Za-z0-9_.-/]){re.escape(old)}(?![A-Za-z0-9_.-/])",
+                file_specific,
                 updated,
             )
         if updated != original:
@@ -842,7 +1276,7 @@ def collect_args(args: argparse.Namespace) -> dict[str, object]:
     destination_name = args.destination_name or prompt("Cleaned folder name", default=DEFAULT_DEST_NAME, required=True)
     special_instructions = args.special_instructions or prompt("Special instructions (optional)")
     exclude_globs_value = args.exclude_globs or prompt(
-        "Paths or globs to leave untouched in preserved/ (optional; prefer top-level names like backend,frontend)"
+        "Paths or globs to keep out of the academic surface (optional; prefer top-level names like backend,frontend)"
     )
     bypass = args.dangerously_bypass_approvals_and_sandbox
     if bypass is None:
@@ -875,7 +1309,7 @@ def main() -> int:
     parser.add_argument("--project-root", default=".", help="Existing project root to migrate")
     parser.add_argument("--destination-name", help="Name of the cleaned subdirectory to create inside the project root")
     parser.add_argument("--special-instructions", help="Optional special migration instructions")
-    parser.add_argument("--exclude-globs", help="Comma-separated globs to preserve without restructuring")
+    parser.add_argument("--exclude-globs", help="Comma-separated globs to keep out of the academic surface")
     parser.add_argument(
         "--dangerously-bypass-approvals-and-sandbox",
         dest="dangerously_bypass_approvals_and_sandbox",
@@ -904,33 +1338,25 @@ def main() -> int:
     copy_template(destination)
     enable_bypass_in_project_config(destination, bool(answers["dangerously_bypass_approvals_and_sandbox"]))
 
-    preserved_source = preserve_copy(source_root, destination, str(answers["destination_name"]))
-    conflict_root = destination / ".workflow" / "state" / "migration" / "conflicts"
-    (destination / ".workflow" / "state" / "migration" / "legacy-agent-material").mkdir(parents=True, exist_ok=True)
+    source_copy_root = preserve_copy(source_root, destination, str(answers["destination_name"]))
+    conflict_root = destination / HIDDEN_CONFLICTS
+    (destination / LEGACY_AGENT_ARCHIVE).mkdir(parents=True, exist_ok=True)
 
     records: list[MappingRecord] = []
     conflicts: list[str] = []
-    symlinks: list[str] = []
     rewrite_map: dict[str, str] = {}
     large_paths: list[str] = []
     legacy_docs: list[str] = []
+    exclude_globs = list(dict.fromkeys(answers["exclude_globs"]))
+    special_instructions = str(answers["special_instructions"])
 
-    for item in sorted(preserved_source.iterdir(), key=lambda p: p.name):
+    for item in sorted(source_copy_root.iterdir(), key=lambda p: p.name):
         if item.name in IGNORE_NAMES:
             continue
         if item.is_dir():
-            category, destination_rel = top_level_target(
-                item.name,
-                item,
-                str(answers["special_instructions"]),
-                list(dict.fromkeys(answers["exclude_globs"])),
-            )
+            category, destination_rel = top_level_target(item.name, item, special_instructions, exclude_globs)
         else:
-            category, destination_rel = classify_root_file(
-                item,
-                str(answers["special_instructions"]),
-                list(dict.fromkeys(answers["exclude_globs"])),
-            )
+            category, destination_rel = classify_root_file(item, special_instructions, exclude_globs)
 
         target = destination / destination_rel
         copied_files: list[Path] = []
@@ -940,57 +1366,21 @@ def main() -> int:
             records.append(MappingRecord(item.name, destination_rel, category, "copied"))
             continue
 
-        if category == "legacy_agent_material":
-            if item.is_dir():
-                merge_tree_copy(item, target, conflict_root, preserved_source, destination, copied_files, conflicts)
-            else:
-                final_path = copy_file_with_conflict(item, target, conflict_root, preserved_source, destination, conflicts)
-                copied_files.append(final_path)
-            legacy_docs.append(item.name)
-            records.append(MappingRecord(item.name, destination_rel, category, "copied"))
-            continue
-
-        if item.is_dir() and destination_rel in CANONICAL_ROOTS:
-            merge_tree_copy(item, target, conflict_root, preserved_source, destination, copied_files, conflicts)
-            mode = "merged"
-        elif item.is_dir() and category in {"preserved", "data", "output"}:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if target.exists():
-                merge_tree_copy(item, target, conflict_root, preserved_source, destination, copied_files, conflicts)
-                mode = "merged"
-            else:
-                create_relative_symlink(item, target)
-                mode = "symlinked"
-                symlinks.append(f"{target.relative_to(destination)} -> {item.relative_to(destination)}")
-        elif item.is_dir():
-            merge_tree_copy(item, target, conflict_root, preserved_source, destination, copied_files, conflicts)
-            mode = "copied"
-        elif category in {"preserved", "data", "output"} or item.suffix.lower() not in TEXT_EXTENSIONS:
-            if not target.exists():
-                create_relative_symlink(item, target)
-                mode = "symlinked"
-                symlinks.append(f"{target.relative_to(destination)} -> {item.relative_to(destination)}")
-            else:
-                final_path = copy_file_with_conflict(item, target, conflict_root, preserved_source, destination, conflicts)
-                copied_files.append(final_path)
-                mode = "copied"
+        if item.is_dir():
+            merge_tree_copy(item, target, conflict_root, source_copy_root, destination, copied_files, conflicts)
+            mode = "merged" if target.exists() else "copied"
         else:
-            final_path = copy_file_with_conflict(item, target, conflict_root, preserved_source, destination, conflicts)
+            final_path = copy_file_with_conflict(item, target, conflict_root, source_copy_root, destination, conflicts)
             copied_files.append(final_path)
             mode = "copied"
 
         records.append(MappingRecord(item.name, destination_rel, category, mode))
 
-        if item.name not in CANONICAL_ROOTS and item.name not in {".gitignore", "README.md", "SETUP.md", "STARTER_PROMPT.md"}:
-            link_path = destination / item.name
-            if not link_path.exists():
-                create_relative_symlink(target, link_path)
-                symlinks.append(f"{item.name} -> {destination_rel}")
+        if category == "legacy_agent_material":
+            legacy_docs.append(item.name)
 
-        if destination_rel not in CANONICAL_ROOTS:
+        if destination_rel not in {item.name, "."}:
             rewrite_map[item.name] = destination_rel
-        elif item.name == "paper":
-            rewrite_map[item.name] = "manuscript"
 
         for copied_file in copied_files:
             if copied_file.is_file() and copied_file.stat().st_size >= LARGE_FILE_BYTES:
@@ -998,23 +1388,26 @@ def main() -> int:
 
     append_ignore_rules(destination, source_root, large_paths)
     rewrite_top_level_references(destination, rewrite_map)
+    insight = collect_memory_insights(source_copy_root, exclude_globs)
     populate_adopted_project_files(
         destination,
         source_root,
-        str(answers["special_instructions"]),
-        list(dict.fromkeys(answers["exclude_globs"])),
+        source_copy_root,
+        special_instructions,
+        exclude_globs,
         records,
         conflicts,
         legacy_docs,
+        insight,
     )
     write_migration_report(
         destination,
         source_root,
         records,
         conflicts,
-        symlinks,
-        str(answers["special_instructions"]),
-        list(dict.fromkeys(answers["exclude_globs"])),
+        special_instructions,
+        exclude_globs,
+        insight,
     )
 
     if not args.no_init_git:
@@ -1023,9 +1416,9 @@ def main() -> int:
     print(f"Created cleaned project at {destination}")
     print("Review these first:")
     print(f"- {destination / '.workflow/state/migration/report.md'}")
-    print(f"- {destination / 'preserved/source'}")
+    print(f"- {destination / HIDDEN_SOURCE_SNAPSHOT}")
     if conflicts:
-        print(f"- {destination / '.workflow/state/migration/conflicts'}")
+        print(f"- {destination / HIDDEN_CONFLICTS}")
     return 0
 
 
